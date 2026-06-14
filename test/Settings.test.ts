@@ -4,7 +4,6 @@ import {join} from 'node:path';
 import {afterEach, beforeEach, describe, expect, it} from 'vitest';
 import {AppDb} from '../src/lib/AppDb.js';
 import {Settings} from '../src/lib/Settings.js';
-import {RELEASE_GROUP_PRIMARY_TYPES} from '../src/lib/releaseTypes.js';
 
 const originalDataDir = process.env.SILVER_MUSIC_NOTIFIER_DATA_DIR;
 let tempDir: string;
@@ -82,33 +81,44 @@ describe('Settings', () => {
   });
 
   describe('releaseFilter', () => {
-    it('defaults to keeping every primary type', () => {
-      expect(Settings.load().releaseFilter.primaryTypes).toEqual([
-        ...RELEASE_GROUP_PRIMARY_TYPES,
-      ]);
+    it('defaults to Album/Single/EP and excluding no secondary types', () => {
+      const {releaseFilter} = Settings.load();
+      expect(releaseFilter.primaryTypes).toEqual(['Album', 'Single', 'EP']);
+      expect(releaseFilter.excludeSecondaryTypes).toEqual([]);
     });
 
-    it('replaces the primary type list when saved (arrays are not merged)', () => {
+    it('replaces the type lists when saved (arrays are not merged)', () => {
       const saved = Settings.save({
-        releaseFilter: {primaryTypes: ['Album', 'EP']},
+        releaseFilter: {
+          primaryTypes: ['Album', 'EP'],
+          excludeSecondaryTypes: ['Live', 'Remix'],
+        },
       });
 
       expect(saved.releaseFilter.primaryTypes).toEqual(['Album', 'EP']);
-      expect(Settings.load().releaseFilter.primaryTypes).toEqual([
-        'Album',
-        'EP',
+      expect(saved.releaseFilter.excludeSecondaryTypes).toEqual([
+        'Live',
+        'Remix',
       ]);
+      expect(Settings.load().releaseFilter).toEqual(saved.releaseFilter);
     });
 
-    it('drops unknown primary types persisted in the config', () => {
+    it('drops unknown primary and secondary types persisted in the config', () => {
       AppDb.getDefault()
         .prepare('INSERT INTO settings (key, value) VALUES (?, ?)')
         .run(
           'config',
-          JSON.stringify({releaseFilter: {primaryTypes: ['Album', 'Bogus']}}),
+          JSON.stringify({
+            releaseFilter: {
+              primaryTypes: ['Album', 'Bogus'],
+              excludeSecondaryTypes: ['Live', 'Nope'],
+            },
+          }),
         );
 
-      expect(Settings.load().releaseFilter.primaryTypes).toEqual(['Album']);
+      const {releaseFilter} = Settings.load();
+      expect(releaseFilter.primaryTypes).toEqual(['Album']);
+      expect(releaseFilter.excludeSecondaryTypes).toEqual(['Live']);
     });
 
     it('supportPrimaryType reflects the configured list, always keeping untyped', () => {
@@ -120,6 +130,43 @@ describe('Settings', () => {
       expect(settings.supportPrimaryType('Single')).toBe(false);
       // Untyped release-groups are always kept regardless of the filter.
       expect(settings.supportPrimaryType(null)).toBe(true);
+    });
+
+    it('supportSecondaryTypes excludes groups carrying any excluded type', () => {
+      const settings = Settings.save({
+        releaseFilter: {excludeSecondaryTypes: ['Live', 'Remix']},
+      });
+
+      expect(settings.supportSecondaryTypes([])).toBe(true);
+      expect(settings.supportSecondaryTypes(['Compilation'])).toBe(true);
+      expect(settings.supportSecondaryTypes(['Live'])).toBe(false);
+      expect(settings.supportSecondaryTypes(['Compilation', 'Remix'])).toBe(
+        false,
+      );
+    });
+
+    it('includeRelease applies both the primary and secondary filters', () => {
+      const settings = Settings.save({
+        releaseFilter: {
+          primaryTypes: ['Album', 'EP'],
+          excludeSecondaryTypes: ['Live'],
+        },
+      });
+
+      expect(
+        settings.includeRelease({primaryType: 'Album', secondaryTypes: []}),
+      ).toBe(true);
+      // Wrong primary type.
+      expect(
+        settings.includeRelease({primaryType: 'Single', secondaryTypes: []}),
+      ).toBe(false);
+      // Excluded secondary type.
+      expect(
+        settings.includeRelease({
+          primaryType: 'Album',
+          secondaryTypes: ['Live'],
+        }),
+      ).toBe(false);
     });
   });
 });

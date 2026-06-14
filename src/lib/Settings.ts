@@ -1,5 +1,10 @@
 import {AppDb} from './AppDb.js';
-import {isPrimaryType, type ReleaseGroupPrimaryType} from './releaseTypes.js';
+import {
+  isPrimaryType,
+  isSecondaryType,
+  type ReleaseGroupPrimaryType,
+  type ReleaseGroupSecondaryType,
+} from './releaseTypes.js';
 
 export interface SmtpSettings {
   host: string;
@@ -25,6 +30,9 @@ export interface ReleaseFilterSettings {
   // Release-group primary types to keep when refreshing. Types not listed are
   // filtered out (not stored).
   primaryTypes: ReleaseGroupPrimaryType[];
+  // Release-group secondary types to exclude when refreshing. A release-group
+  // carrying any of these secondary types is filtered out. Empty by default.
+  excludeSecondaryTypes: ReleaseGroupSecondaryType[];
 }
 
 export interface SettingsInput {
@@ -62,6 +70,8 @@ const DEFAULT_SETTINGS: SettingsInput = {
   releaseFilter: {
     // Keep proper releases by default; Broadcast and Other are excluded.
     primaryTypes: ['Album', 'Single', 'EP'],
+    // Exclude nothing by secondary type by default.
+    excludeSecondaryTypes: [],
   },
 };
 
@@ -82,6 +92,8 @@ export class Settings {
       // Drop any unknown values that may have been persisted by an older or
       // hand-edited config.
       primaryTypes: input.releaseFilter.primaryTypes.filter(isPrimaryType),
+      excludeSecondaryTypes:
+        input.releaseFilter.excludeSecondaryTypes.filter(isSecondaryType),
     };
   }
 
@@ -136,6 +148,26 @@ export class Settings {
   // Untyped release-groups (null) are always kept.
   supportPrimaryType(type: ReleaseGroupPrimaryType | null): boolean {
     return type === null || this.releaseFilter.primaryTypes.includes(type);
+  }
+
+  // Whether a release-group with these secondary types should be kept on
+  // refresh. It is filtered out if it carries any excluded secondary type.
+  supportSecondaryTypes(types: ReleaseGroupSecondaryType[]): boolean {
+    return !types.some(t =>
+      this.releaseFilter.excludeSecondaryTypes.includes(t),
+    );
+  }
+
+  // Whether a release-group should be kept on refresh, applying both the
+  // primary-type and secondary-type filters.
+  includeRelease(group: {
+    primaryType: ReleaseGroupPrimaryType | null;
+    secondaryTypes: ReleaseGroupSecondaryType[];
+  }): boolean {
+    return (
+      this.supportPrimaryType(group.primaryType) &&
+      this.supportSecondaryTypes(group.secondaryTypes)
+    );
   }
 
   smtpIsConfigured(): boolean {

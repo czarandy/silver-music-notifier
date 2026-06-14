@@ -36,3 +36,11 @@ export function isPrimaryType(
 ): value is ReleaseGroupPrimaryType {
   return RELEASE_GROUP_PRIMARY_TYPES.includes(value as ReleaseGroupPrimaryType);
 }
+
+export function isSecondaryType(
+  value: unknown,
+): value is ReleaseGroupSecondaryType {
+  return RELEASE_GROUP_SECONDARY_TYPES.includes(
+    value as ReleaseGroupSecondaryType,
+  );
+}

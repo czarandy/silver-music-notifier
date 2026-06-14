@@ -1,8 +1,32 @@
 import type {Command} from 'commander';
 import {Settings, type SettingsPatch} from '../../lib/Settings.js';
-import {RELEASE_GROUP_PRIMARY_TYPES} from '../../lib/releaseTypes.js';
+import {
+  RELEASE_GROUP_PRIMARY_TYPES,
+  RELEASE_GROUP_SECONDARY_TYPES,
+} from '../../lib/releaseTypes.js';
 
 const PRIMARY_TYPES_KEY = 'releaseFilter.primaryTypes';
+const SECONDARY_TYPES_KEY = 'releaseFilter.excludeSecondaryTypes';
+
+// Parse a comma-separated list (e.g. "Album,EP") and validate every entry
+// against the allowed vocabulary.
+function parseTypeList(
+  value: string,
+  valid: readonly string[],
+  label: string,
+): string[] {
+  const types = value
+    .split(',')
+    .map(t => t.trim())
+    .filter(Boolean);
+  const invalid = types.filter(t => !valid.includes(t));
+  if (invalid.length > 0) {
+    throw new Error(
+      `Invalid ${label}(s): ${invalid.join(', ')}. Valid: ${valid.join(', ')}`,
+    );
+  }
+  return types;
+}
 
 // Flatten the settings object into dotted keys for display/editing, masking the
 // SMTP password so it is never printed.
@@ -20,6 +44,7 @@ function flatten(s: Settings): Record<string, string> {
     'smtp.to': s.smtp.to,
     'musicbrainz.contact': s.musicbrainz.contact,
     [PRIMARY_TYPES_KEY]: s.releaseFilter.primaryTypes.join(','),
+    [SECONDARY_TYPES_KEY]: s.releaseFilter.excludeSecondaryTypes.join(','),
   };
 }
 
@@ -34,21 +59,14 @@ function coerce(
     return Number(value);
   }
   if (key === PRIMARY_TYPES_KEY) {
-    // Comma-separated list, e.g. "Album,EP,Single".
-    const types = value
-      .split(',')
-      .map(t => t.trim())
-      .filter(Boolean);
-    const invalid = types.filter(
-      t => !RELEASE_GROUP_PRIMARY_TYPES.includes(t as never),
+    return parseTypeList(value, RELEASE_GROUP_PRIMARY_TYPES, 'primary type');
+  }
+  if (key === SECONDARY_TYPES_KEY) {
+    return parseTypeList(
+      value,
+      RELEASE_GROUP_SECONDARY_TYPES,
+      'secondary type',
     );
-    if (invalid.length > 0) {
-      throw new Error(
-        `Invalid primary type(s): ${invalid.join(', ')}. ` +
-          `Valid: ${RELEASE_GROUP_PRIMARY_TYPES.join(', ')}`,
-      );
-    }
-    return types;
   }
   return value;
 }

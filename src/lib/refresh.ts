@@ -74,8 +74,9 @@ export async function refresh(
       const now = new Date().toISOString();
       const apply = db.transaction(() => {
         for (const g of groups) {
-          // Skip release-groups whose primary type is filtered out.
-          if (!settings.supportPrimaryType(g.primaryType)) {
+          // Skip release-groups filtered out by primary type, or carrying an
+          // excluded secondary type.
+          if (!settings.includeRelease(g)) {
             continue;
           }
           const seen = existing.get(g.mbid);

@@ -14,7 +14,9 @@ import {
 import {api, type Settings} from '../api.js';
 import {
   RELEASE_GROUP_PRIMARY_TYPES,
+  RELEASE_GROUP_SECONDARY_TYPES,
   type ReleaseGroupPrimaryType,
+  type ReleaseGroupSecondaryType,
 } from '../../lib/releaseTypes.js';
 
 export function SettingsPanel() {
@@ -53,6 +55,23 @@ export function SettingsPanel() {
           )
         : current.filter(t => t !== type);
       return {...s, releaseFilter: {...s.releaseFilter, primaryTypes}};
+    });
+  }
+  function toggleExcludeSecondaryType(
+    type: ReleaseGroupSecondaryType,
+    excluded: boolean,
+  ) {
+    setSettings(s => {
+      if (!s) {
+        return s;
+      }
+      const current = s.releaseFilter.excludeSecondaryTypes;
+      const excludeSecondaryTypes = excluded
+        ? RELEASE_GROUP_SECONDARY_TYPES.filter(
+            t => current.includes(t) || t === type,
+          )
+        : current.filter(t => t !== type);
+      return {...s, releaseFilter: {...s.releaseFilter, excludeSecondaryTypes}};
     });
   }
 
@@ -129,6 +148,19 @@ export function SettingsPanel() {
             label={type}
             value={settings.releaseFilter.primaryTypes.includes(type)}
             onChange={checked => togglePrimaryType(type, checked)}
+          />
+        ))}
+
+        <Text color="secondary">
+          Exclude releases with any of these secondary types. None excluded by
+          default.
+        </Text>
+        {RELEASE_GROUP_SECONDARY_TYPES.map(type => (
+          <CheckboxInput
+            key={type}
+            label={`Exclude ${type}`}
+            value={settings.releaseFilter.excludeSecondaryTypes.includes(type)}
+            onChange={checked => toggleExcludeSecondaryType(type, checked)}
           />
         ))}
       </section>
