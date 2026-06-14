@@ -20,9 +20,12 @@ function flatten(s: Settings): Record<string, string> {
 }
 
 function coerce(key: string, value: string): boolean | number | string {
-  if (/^(notify\.|smtp\.secure$)/.test(key))
+  if (/^(notify\.|smtp\.secure$)/.test(key)) {
     return value === 'true' || value === '1';
-  if (key === 'smtp.port') return Number(value);
+  }
+  if (key === 'smtp.port') {
+    return Number(value);
+  }
   return value;
 }
 
@@ -52,7 +55,9 @@ export function registerConfig(program: Command): void {
         console.log(flat[key]);
         return;
       }
-      for (const [k, v] of Object.entries(flat)) console.log(`${k} = ${v}`);
+      for (const [k, v] of Object.entries(flat)) {
+        console.log(`${k} = ${v}`);
+      }
     });
 
   config

@@ -61,7 +61,9 @@ export function removeArtist(idOrName: string): ArtistRow | undefined {
     (db
       .prepare('SELECT * FROM artists WHERE name = ? COLLATE NOCASE')
       .get(idOrName) as ArtistRow | undefined);
-  if (!found) return undefined;
+  if (!found) {
+    return undefined;
+  }
   db.prepare('DELETE FROM artists WHERE mbid = ?').run(found.mbid);
   return found;
 }

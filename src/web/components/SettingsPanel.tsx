@@ -22,7 +22,9 @@ export function SettingsPanel() {
     api.getSettings().then(setSettings);
   }, []);
 
-  if (!settings) return <Spinner label="Loading settings…" />;
+  if (!settings) {
+    return <Spinner label="Loading settings…" />;
+  }
 
   const smtpReady = Boolean(
     settings.smtp.host && settings.smtp.user && settings.smtp.to,
@@ -36,7 +38,9 @@ export function SettingsPanel() {
   }
 
   async function save() {
-    if (!settings) return;
+    if (!settings) {
+      return;
+    }
     setSaving(true);
     try {
       setSettings(await api.saveSettings(settings));
@@ -49,7 +53,9 @@ export function SettingsPanel() {
   }
 
   async function testEmail() {
-    if (!settings) return;
+    if (!settings) {
+      return;
+    }
     setTesting(true);
     try {
       await api.testEmail(settings);

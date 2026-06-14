@@ -25,7 +25,9 @@ let db: Database.Database | null = null;
 // Open (and lazily initialize) the SQLite database. Schema creation is idempotent
 // so this is safe to call from every CLI invocation and from the server.
 export function getDb(): Database.Database {
-  if (db) return db;
+  if (db) {
+    return db;
+  }
   db = new Database(dbPath());
   db.pragma('journal_mode = WAL');
   db.pragma('foreign_keys = ON');

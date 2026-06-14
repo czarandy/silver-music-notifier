@@ -31,7 +31,9 @@ export function ArtistsPanel() {
   }, []);
 
   useEffect(() => {
-    if (debounce.current) clearTimeout(debounce.current);
+    if (debounce.current) {
+      clearTimeout(debounce.current);
+    }
     const q = query.trim();
     if (q.length < 2) {
       setResults([]);
@@ -48,7 +50,9 @@ export function ArtistsPanel() {
       }
     }, 350);
     return () => {
-      if (debounce.current) clearTimeout(debounce.current);
+      if (debounce.current) {
+        clearTimeout(debounce.current);
+      }
     };
   }, [query, showToast]);
 

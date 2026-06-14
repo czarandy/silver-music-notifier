@@ -65,7 +65,9 @@ function writeRaw(key: string, value: string): void {
 // have a value even for databases created by an older version.
 export function getSettings(): Settings {
   const raw = readRaw(CONFIG_KEY);
-  if (!raw) return structuredClone(DEFAULT_SETTINGS);
+  if (!raw) {
+    return structuredClone(DEFAULT_SETTINGS);
+  }
   let parsed: Partial<Settings>;
   try {
     parsed = JSON.parse(raw);

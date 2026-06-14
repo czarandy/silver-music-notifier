@@ -86,7 +86,9 @@ async function emailNotify(
 export async function notifyNewReleases(
   newReleases: NewRelease[],
 ): Promise<void> {
-  if (newReleases.length === 0) return;
+  if (newReleases.length === 0) {
+    return;
+  }
   const s = getSettings();
 
   if (s.notify.desktop && !process.env.SMN_DISABLE_DESKTOP) {

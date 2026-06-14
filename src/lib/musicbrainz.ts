@@ -80,7 +80,9 @@ export async function fetchReleaseGroups(
     }
     const total = res['release-group-count'] ?? out.length;
     offset += groups.length;
-    if (groups.length === 0 || offset >= total) break;
+    if (groups.length === 0 || offset >= total) {
+      break;
+    }
   }
   return out;
 }
