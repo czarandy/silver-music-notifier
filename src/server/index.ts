@@ -12,14 +12,15 @@ import {Settings, type SettingsPatch} from '../lib/Settings.js';
 // Locate the built web assets. When bundled by tsup the file lives at
 // dist/cli/index.js, so dist/web is two levels up; during `tsx` dev runs the
 // file is src/server/index.ts and dist/web may not exist yet (the dev server is
-// served by Vite instead).
+// served by Vite instead). We key on index.html so a stale/empty dist/web isn't
+// mistaken for a real build.
 function webDir(): string | null {
   const here = dirname(fileURLToPath(import.meta.url));
   const candidates = [
     join(here, '..', 'web'), // dist/cli/index.js -> dist/web
     join(here, '..', '..', 'dist', 'web'), // src/server/index.ts -> dist/web
   ];
-  return candidates.find(c => existsSync(c)) ?? null;
+  return candidates.find(c => existsSync(join(c, 'index.html'))) ?? null;
 }
 
 function asyncRoute(
@@ -123,6 +124,13 @@ export function createApp() {
     app.use(express.static(dir));
     app.get('*', (_req, res) => {
       res.sendFile(join(dir, 'index.html'));
+    });
+  } else {
+    app.get('*', (_req, res) => {
+      res
+        .status(503)
+        .type('text')
+        .send('Web assets are not built. Run `npm run build` and try again.');
     });
   }
 

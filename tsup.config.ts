@@ -12,7 +12,10 @@ export default defineConfig({
   target: 'node20',
   platform: 'node',
   splitting: false,
-  clean: true,
+  // Don't clean: tsup shares the dist/ root with Vite's dist/web, and a full
+  // clean would wipe the web build. tsup overwrites its own output each run, and
+  // Vite empties dist/web itself.
+  clean: false,
   dts: false,
   sourcemap: true,
   // Anything in dependencies stays external automatically; this is just explicit
