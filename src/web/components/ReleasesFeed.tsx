@@ -4,11 +4,12 @@ import {
   Badge,
   Button,
   EmptyState,
-  Heading,
+  Layout,
+  LayoutContent,
+  LayoutHeader,
   proportional,
   Spinner,
   Table,
-  Text,
   useTableSortable,
   useTableSortableState,
   useToast,
@@ -62,23 +63,11 @@ export function ReleasesFeed() {
         });
       }
     },
-    onError: err => {
-      showToast({
-        type: 'error',
-        body: err instanceof Error ? err.message : String(err),
-      });
-    },
   });
   const dismissMutation = useMutation({
     mutationFn: api.dismissRelease,
     onSuccess: async () => {
       await queryClient.invalidateQueries({queryKey: ['releases']});
-    },
-    onError: err => {
-      showToast({
-        type: 'error',
-        body: err instanceof Error ? err.message : String(err),
-      });
     },
   });
   const releases = releasesQuery.data ?? [];
@@ -161,42 +150,44 @@ export function ReleasesFeed() {
   );
 
   return (
-    <div style={{display: 'flex', flexDirection: 'column', gap: 16}}>
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'flex-start',
-          gap: 16,
-        }}>
-        <div style={{display: 'flex', flexDirection: 'column', gap: 4}}>
-          <Heading level={2}>Releases</Heading>
-          <Text color="secondary">
-            {releases.length} release{releases.length === 1 ? '' : 's'} tracked
-          </Text>
-        </div>
-        <Button
-          label="Refresh"
-          variant="primary"
-          isLoading={refreshMutation.isPending}
-          onClick={() => refreshMutation.mutate()}
+    <Layout
+      height="auto"
+      hasDividers={false}
+      header={
+        <LayoutHeader
+          title="Releases"
+          subtitle={`${releases.length} release${releases.length === 1 ? '' : 's'} tracked`}
+          padding={0}
+          endContent={
+            <Button
+              label="Refresh"
+              variant="primary"
+              isLoading={refreshMutation.isPending}
+              onClick={() => refreshMutation.mutate()}
+            />
+          }
         />
-      </div>
-
-      {releasesQuery.isLoading ? (
-        <Spinner label="Loading releases…" />
-      ) : releases.length === 0 ? (
-        <EmptyState
-          title="No releases yet"
-          description="Add some artists, then hit Refresh to pull their releases from MusicBrainz."
-        />
-      ) : (
-        <Table<Release>
-          columns={columns}
-          data={sortedData}
-          plugins={[sortable]}
-        />
-      )}
-    </div>
+      }
+      content={
+        <LayoutContent padding={0}>
+          <div style={{marginTop: 16}}>
+            {releasesQuery.isLoading ? (
+              <Spinner label="Loading releases…" />
+            ) : releases.length === 0 ? (
+              <EmptyState
+                title="No releases yet"
+                description="Add some artists, then hit Refresh to pull their releases from MusicBrainz."
+              />
+            ) : (
+              <Table<Release>
+                columns={columns}
+                data={sortedData}
+                plugins={[sortable]}
+              />
+            )}
+          </div>
+        </LayoutContent>
+      }
+    />
   );
 }

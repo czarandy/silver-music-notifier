@@ -1,52 +1,61 @@
 import {useState} from 'react';
-import {Heading, Tab, Tabs, Text} from 'silver-ui';
+import {Music, Settings, Users, type LucideIcon} from 'lucide-react';
+import {
+  AppShell,
+  SideNav,
+  SideNavHeading,
+  SideNavSection,
+  SideNavItem,
+} from 'silver-ui';
 import {ArtistsPanel} from './components/ArtistsPanel.js';
 import {ReleasesFeed} from './components/ReleasesFeed.js';
 import {SettingsPanel} from './components/SettingsPanel.js';
 
 type View = 'releases' | 'artists' | 'settings';
 
-const NAV: {id: View; label: string}[] = [
-  {id: 'releases', label: 'Releases'},
-  {id: 'artists', label: 'Artists'},
-  {id: 'settings', label: 'Settings'},
+const NAV: {id: View; label: string; icon: LucideIcon}[] = [
+  {id: 'releases', label: 'Releases', icon: Music},
+  {id: 'artists', label: 'Artists', icon: Users},
+  {id: 'settings', label: 'Settings', icon: Settings},
 ];
 
 export function App() {
   const [view, setView] = useState<View>('releases');
 
   return (
-    <div style={{maxWidth: 960, margin: '0 auto', padding: '24px 16px'}}>
-      <header style={{marginBottom: 8}}>
-        <Heading level={1}>Silver Music Notifier</Heading>
-        <Text color="secondary">New releases from the artists you follow.</Text>
-      </header>
-
-      <Tabs
-        label="Sections"
-        value={view}
-        onChange={value => setView(value as View)}
-        hasDivider
-        style={{margin: '16px 0 24px'}}>
-        {NAV.map(n => (
-          <Tab
-            key={n.id}
-            id={`${n.id}-tab`}
-            controls={`${n.id}-panel`}
-            label={n.label}
-            value={n.id}
-          />
-        ))}
-      </Tabs>
-
-      <main
+    <AppShell
+      height="auto"
+      contentPadding={6}
+      sideNav={
+        <SideNav
+          header={
+            <SideNavHeading
+              heading="Silver Music Notifier"
+              subheading="Track releases from your artists"
+            />
+          }>
+          <SideNavSection isHeaderHidden title="Main nav">
+            {NAV.map(n => (
+              <SideNavItem
+                key={n.id}
+                label={n.label}
+                icon={n.icon}
+                isSelected={view === n.id}
+                onClick={() => setView(n.id)}
+              />
+            ))}
+          </SideNavSection>
+        </SideNav>
+      }>
+      <div
         id={`${view}-panel`}
         role="tabpanel"
-        aria-labelledby={`${view}-tab`}>
+        aria-label={NAV.find(n => n.id === view)?.label}
+        style={{maxWidth: 960, margin: '0 auto'}}>
         {view === 'releases' && <ReleasesFeed />}
         {view === 'artists' && <ArtistsPanel />}
         {view === 'settings' && <SettingsPanel />}
-      </main>
-    </div>
+      </div>
+    </AppShell>
   );
 }

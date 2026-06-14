@@ -39,17 +39,11 @@ export function SettingsPanel() {
       setSettings(saved);
       showToast({type: 'success', body: 'Settings saved.'});
     },
-    onError: err => {
-      showToast({type: 'error', body: errMsg(err)});
-    },
   });
   const testEmailMutation = useMutation({
     mutationFn: api.testEmail,
     onSuccess: () => {
       showToast({type: 'success', body: 'Test email sent.'});
-    },
-    onError: err => {
-      showToast({type: 'error', body: errMsg(err)});
     },
   });
 
@@ -269,8 +263,4 @@ export function SettingsPanel() {
       </section>
     </div>
   );
-}
-
-function errMsg(err: unknown): string {
-  return err instanceof Error ? err.message : String(err);
 }

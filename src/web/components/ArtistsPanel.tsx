@@ -42,9 +42,6 @@ export function ArtistsPanel() {
       setDebouncedQuery('');
       await queryClient.invalidateQueries({queryKey: ['artists']});
     },
-    onError: err => {
-      showToast({type: 'error', body: errMsg(err)});
-    },
   });
   const removeMutation = useMutation({
     mutationFn: api.removeArtist,
@@ -59,36 +56,32 @@ export function ArtistsPanel() {
         queryClient.invalidateQueries({queryKey: ['releases']}),
       ]);
     },
-    onError: err => {
-      showToast({type: 'error', body: errMsg(err)});
-    },
   });
   const artists = artistsQuery.data ?? [];
   const results: ArtistSearchResult[] =
     debouncedQuery.length >= 2 ? (searchQuery.data ?? []) : [];
 
-  useEffect(() => {
+  useEffect(
+    () => () => {
+      if (debounce.current) {
+        clearTimeout(debounce.current);
+      }
+    },
+    [],
+  );
+
+  const updateQuery = (value: string) => {
+    setQuery(value);
     if (debounce.current) {
       clearTimeout(debounce.current);
     }
-    const q = query.trim();
+    const q = value.trim();
     if (q.length < 2) {
       setDebouncedQuery('');
       return;
     }
     debounce.current = setTimeout(() => setDebouncedQuery(q), 350);
-    return () => {
-      if (debounce.current) {
-        clearTimeout(debounce.current);
-      }
-    };
-  }, [query]);
-
-  useEffect(() => {
-    if (searchQuery.error) {
-      showToast({type: 'error', body: errMsg(searchQuery.error)});
-    }
-  }, [searchQuery.error, showToast]);
+  };
 
   function add(r: ArtistSearchResult) {
     addMutation.mutate({
@@ -146,7 +139,7 @@ export function ArtistsPanel() {
           label="Add an artist"
           placeholder="Search MusicBrainz by name…"
           value={query}
-          onChange={v => setQuery(v)}
+          onChange={updateQuery}
           isLoading={searchQuery.isFetching}
           hasClear
         />
@@ -209,8 +202,4 @@ export function ArtistsPanel() {
       </section>
     </div>
   );
-}
-
-function errMsg(err: unknown): string {
-  return err instanceof Error ? err.message : String(err);
 }
