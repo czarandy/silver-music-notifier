@@ -80,4 +80,15 @@ export class Artist {
       .prepare('DELETE FROM artists WHERE mbid = ?')
       .run(this.mbid);
   }
+
+  // Delete every tracked artist (cascading to release_groups). Returns the
+  // number of artists and releases removed.
+  static clearAll(): {artists: number; releases: number} {
+    const db = AppDb.getDefault();
+    const {n: releases} = db
+      .prepare('SELECT COUNT(*) AS n FROM release_groups')
+      .get() as {n: number};
+    const result = db.prepare('DELETE FROM artists').run();
+    return {artists: result.changes, releases};
+  }
 }

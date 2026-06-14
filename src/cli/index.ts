@@ -6,16 +6,20 @@ import {registerRemove} from './commands/remove.js';
 import {registerRefresh} from './commands/refresh.js';
 import {registerReleases} from './commands/releases.js';
 import {registerConfig} from './commands/config.js';
+import {registerClearData} from './commands/clearData.js';
 import {ensureMbContact} from './ensureContact.js';
 
 const program = new Command();
 
+// Commands that don't hit the MusicBrainz API and must work before a contact is
+// configured (e.g. `config` to set it, `clear-data` to wipe local state).
+const CONTACT_EXEMPT_COMMANDS = new Set(['config', 'clear-data']);
+
 // A configured MusicBrainz contact is required. Ensure it once at the root
-// (prompting interactively on first use) rather than in each command. `config`
-// is exempt — you need it to set the contact in the first place.
+// (prompting interactively on first use) rather than in each command.
 program.hook('preAction', async (_thisCommand, actionCommand) => {
   for (let cmd: Command | null = actionCommand; cmd; cmd = cmd.parent) {
-    if (cmd.name() === 'config') {
+    if (CONTACT_EXEMPT_COMMANDS.has(cmd.name())) {
       return;
     }
   }
@@ -36,6 +40,7 @@ registerRemove(program);
 registerRefresh(program);
 registerReleases(program);
 registerConfig(program);
+registerClearData(program);
 
 program.parseAsync(process.argv).catch(err => {
   console.error(err instanceof Error ? err.message : err);

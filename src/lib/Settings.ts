@@ -131,6 +131,12 @@ export class Settings {
     Settings.writeRaw(LAST_REFRESH_KEY, iso);
   }
 
+  static clearLastRefreshAt(): void {
+    AppDb.getDefault()
+      .prepare('DELETE FROM settings WHERE key = ?')
+      .run(LAST_REFRESH_KEY);
+  }
+
   static musicBrainzContact(): string {
     return Settings.load().musicBrainzContact();
   }
