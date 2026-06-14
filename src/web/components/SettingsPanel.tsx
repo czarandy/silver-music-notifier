@@ -1,6 +1,7 @@
 import {useEffect, useState} from 'react';
 import {
   Button,
+  CheckboxInput,
   Heading,
   NumberInput,
   PasswordInput,
@@ -11,6 +12,10 @@ import {
   useToast,
 } from 'silver-ui';
 import {api, type Settings} from '../api.js';
+import {
+  RELEASE_GROUP_PRIMARY_TYPES,
+  type ReleaseGroupPrimaryType,
+} from '../../lib/releaseTypes.js';
 
 export function SettingsPanel() {
   const showToast = useToast();
@@ -35,6 +40,20 @@ export function SettingsPanel() {
   }
   function patchSmtp(p: Partial<Settings['smtp']>) {
     setSettings(s => (s ? {...s, smtp: {...s.smtp, ...p}} : s));
+  }
+  function togglePrimaryType(type: ReleaseGroupPrimaryType, enabled: boolean) {
+    setSettings(s => {
+      if (!s) {
+        return s;
+      }
+      const current = s.releaseFilter.primaryTypes;
+      const primaryTypes = enabled
+        ? RELEASE_GROUP_PRIMARY_TYPES.filter(
+            t => current.includes(t) || t === type,
+          )
+        : current.filter(t => t !== type);
+      return {...s, releaseFilter: {...s.releaseFilter, primaryTypes}};
+    });
   }
 
   async function save() {
@@ -96,6 +115,22 @@ export function SettingsPanel() {
           isDisabled={!smtpReady}
           onChange={v => patchNotify({email: v})}
         />
+      </section>
+
+      <section style={{display: 'flex', flexDirection: 'column', gap: 12}}>
+        <Heading level={2}>Releases</Heading>
+        <Text color="secondary">
+          Which release types to track. Unchecked types are filtered out when
+          refreshing.
+        </Text>
+        {RELEASE_GROUP_PRIMARY_TYPES.map(type => (
+          <CheckboxInput
+            key={type}
+            label={type}
+            value={settings.releaseFilter.primaryTypes.includes(type)}
+            onChange={checked => togglePrimaryType(type, checked)}
+          />
+        ))}
       </section>
 
       <section style={{display: 'flex', flexDirection: 'column', gap: 12}}>

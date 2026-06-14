@@ -1,4 +1,5 @@
 import {AppDb} from './AppDb.js';
+import {isPrimaryType, type ReleaseGroupPrimaryType} from './releaseTypes.js';
 
 export interface SmtpSettings {
   host: string;
@@ -20,16 +21,24 @@ export interface MusicBrainzSettings {
   contact: string;
 }
 
+export interface ReleaseFilterSettings {
+  // Release-group primary types to keep when refreshing. Types not listed are
+  // filtered out (not stored).
+  primaryTypes: ReleaseGroupPrimaryType[];
+}
+
 export interface SettingsInput {
   notify: NotifySettings;
   smtp: SmtpSettings;
   musicbrainz: MusicBrainzSettings;
+  releaseFilter: ReleaseFilterSettings;
 }
 
 export type SettingsPatch = Partial<{
   notify: Partial<NotifySettings>;
   smtp: Partial<SmtpSettings>;
   musicbrainz: Partial<MusicBrainzSettings>;
+  releaseFilter: Partial<ReleaseFilterSettings>;
 }>;
 
 const DEFAULT_SETTINGS: SettingsInput = {
@@ -50,6 +59,10 @@ const DEFAULT_SETTINGS: SettingsInput = {
   musicbrainz: {
     contact: '',
   },
+  releaseFilter: {
+    // Keep proper releases by default; Broadcast and Other are excluded.
+    primaryTypes: ['Album', 'Single', 'EP'],
+  },
 };
 
 const CONFIG_KEY = 'config';
@@ -59,11 +72,17 @@ export class Settings {
   readonly notify: NotifySettings;
   readonly smtp: SmtpSettings;
   readonly musicbrainz: MusicBrainzSettings;
+  readonly releaseFilter: ReleaseFilterSettings;
 
   constructor(input: SettingsInput = DEFAULT_SETTINGS) {
     this.notify = {...input.notify};
     this.smtp = {...input.smtp};
     this.musicbrainz = {...input.musicbrainz};
+    this.releaseFilter = {
+      // Drop any unknown values that may have been persisted by an older or
+      // hand-edited config.
+      primaryTypes: input.releaseFilter.primaryTypes.filter(isPrimaryType),
+    };
   }
 
   static defaults(): Settings {
@@ -109,7 +128,14 @@ export class Settings {
       notify: {...this.notify, ...patch.notify},
       smtp: {...this.smtp, ...patch.smtp},
       musicbrainz: {...this.musicbrainz, ...patch.musicbrainz},
+      releaseFilter: {...this.releaseFilter, ...patch.releaseFilter},
     });
+  }
+
+  // Whether a release-group with this primary type should be kept on refresh.
+  // Untyped release-groups (null) are always kept.
+  supportPrimaryType(type: ReleaseGroupPrimaryType | null): boolean {
+    return type === null || this.releaseFilter.primaryTypes.includes(type);
   }
 
   smtpIsConfigured(): boolean {

@@ -4,7 +4,7 @@ import {Release} from '../../lib/Release.js';
 export function registerReleases(program: Command): void {
   program
     .command('releases')
-    .description('List known release-groups, newest first')
+    .description('List known releases, newest first')
     .option('--new', 'only show releases discovered in the last refresh')
     .option('-n, --limit <n>', 'limit the number of rows', v => Number(v))
     .action((opts: {new?: boolean; limit?: number}) => {

@@ -1,6 +1,19 @@
 import {MusicBrainzApi} from 'musicbrainz-api';
 import packageJson from '../../package.json' with {type: 'json'};
 import {Settings} from './Settings.js';
+import {
+  RELEASE_GROUP_PRIMARY_TYPES,
+  RELEASE_GROUP_SECONDARY_TYPES,
+  type ReleaseGroupPrimaryType,
+  type ReleaseGroupSecondaryType,
+} from './releaseTypes.js';
+
+export {
+  RELEASE_GROUP_PRIMARY_TYPES,
+  RELEASE_GROUP_SECONDARY_TYPES,
+  type ReleaseGroupPrimaryType,
+  type ReleaseGroupSecondaryType,
+} from './releaseTypes.js';
 
 // App version is informational for the MusicBrainz User-Agent.
 const APP_VERSION = packageJson.version;
@@ -46,35 +59,6 @@ export async function searchArtist(
     type: a.type,
   }));
 }
-
-export const RELEASE_GROUP_PRIMARY_TYPES = [
-  'Album',
-  'Single',
-  'EP',
-  'Broadcast',
-  'Other',
-] as const;
-
-export type ReleaseGroupPrimaryType =
-  (typeof RELEASE_GROUP_PRIMARY_TYPES)[number];
-
-export const RELEASE_GROUP_SECONDARY_TYPES = [
-  'Compilation',
-  'Soundtrack',
-  'Spokenword',
-  'Interview',
-  'Audiobook',
-  'Audio drama',
-  'Live',
-  'Remix',
-  'DJ-mix',
-  'Mixtape/Street',
-  'Demo',
-  'Field recording',
-] as const;
-
-export type ReleaseGroupSecondaryType =
-  (typeof RELEASE_GROUP_SECONDARY_TYPES)[number];
 
 export interface ReleaseGroup {
   mbid: string;

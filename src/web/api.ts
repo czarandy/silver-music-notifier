@@ -1,3 +1,5 @@
+import type {ReleaseGroupPrimaryType} from '../lib/releaseTypes.js';
+
 export interface Artist {
   mbid: string;
   name: string;
@@ -49,6 +51,7 @@ export interface Settings {
     to: string;
   };
   musicbrainz: {contact: string};
+  releaseFilter: {primaryTypes: ReleaseGroupPrimaryType[]};
 }
 
 async function req<T>(path: string, init?: RequestInit): Promise<T> {

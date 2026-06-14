@@ -4,6 +4,7 @@ import {join} from 'node:path';
 import {afterEach, beforeEach, describe, expect, it} from 'vitest';
 import {AppDb} from '../src/lib/AppDb.js';
 import {Settings} from '../src/lib/Settings.js';
+import {RELEASE_GROUP_PRIMARY_TYPES} from '../src/lib/releaseTypes.js';
 
 const originalDataDir = process.env.SILVER_MUSIC_NOTIFIER_DATA_DIR;
 let tempDir: string;
@@ -78,5 +79,47 @@ describe('Settings', () => {
     expect(() => Settings.musicBrainzContact()).toThrow(
       /MusicBrainz contact is not set/,
     );
+  });
+
+  describe('releaseFilter', () => {
+    it('defaults to keeping every primary type', () => {
+      expect(Settings.load().releaseFilter.primaryTypes).toEqual([
+        ...RELEASE_GROUP_PRIMARY_TYPES,
+      ]);
+    });
+
+    it('replaces the primary type list when saved (arrays are not merged)', () => {
+      const saved = Settings.save({
+        releaseFilter: {primaryTypes: ['Album', 'EP']},
+      });
+
+      expect(saved.releaseFilter.primaryTypes).toEqual(['Album', 'EP']);
+      expect(Settings.load().releaseFilter.primaryTypes).toEqual([
+        'Album',
+        'EP',
+      ]);
+    });
+
+    it('drops unknown primary types persisted in the config', () => {
+      AppDb.getDefault()
+        .prepare('INSERT INTO settings (key, value) VALUES (?, ?)')
+        .run(
+          'config',
+          JSON.stringify({releaseFilter: {primaryTypes: ['Album', 'Bogus']}}),
+        );
+
+      expect(Settings.load().releaseFilter.primaryTypes).toEqual(['Album']);
+    });
+
+    it('supportPrimaryType reflects the configured list, always keeping untyped', () => {
+      const settings = Settings.save({
+        releaseFilter: {primaryTypes: ['Album', 'EP']},
+      });
+
+      expect(settings.supportPrimaryType('Album')).toBe(true);
+      expect(settings.supportPrimaryType('Single')).toBe(false);
+      // Untyped release-groups are always kept regardless of the filter.
+      expect(settings.supportPrimaryType(null)).toBe(true);
+    });
   });
 });

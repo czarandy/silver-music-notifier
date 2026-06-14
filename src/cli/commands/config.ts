@@ -1,5 +1,8 @@
 import type {Command} from 'commander';
 import {Settings, type SettingsPatch} from '../../lib/Settings.js';
+import {RELEASE_GROUP_PRIMARY_TYPES} from '../../lib/releaseTypes.js';
+
+const PRIMARY_TYPES_KEY = 'releaseFilter.primaryTypes';
 
 // Flatten the settings object into dotted keys for display/editing, masking the
 // SMTP password so it is never printed.
@@ -16,22 +19,43 @@ function flatten(s: Settings): Record<string, string> {
     'smtp.from': s.smtp.from,
     'smtp.to': s.smtp.to,
     'musicbrainz.contact': s.musicbrainz.contact,
+    [PRIMARY_TYPES_KEY]: s.releaseFilter.primaryTypes.join(','),
   };
 }
 
-function coerce(key: string, value: string): boolean | number | string {
+function coerce(
+  key: string,
+  value: string,
+): boolean | number | string | string[] {
   if (/^(notify\.|smtp\.secure$)/.test(key)) {
     return value === 'true' || value === '1';
   }
   if (key === 'smtp.port') {
     return Number(value);
   }
+  if (key === PRIMARY_TYPES_KEY) {
+    // Comma-separated list, e.g. "Album,EP,Single".
+    const types = value
+      .split(',')
+      .map(t => t.trim())
+      .filter(Boolean);
+    const invalid = types.filter(
+      t => !RELEASE_GROUP_PRIMARY_TYPES.includes(t as never),
+    );
+    if (invalid.length > 0) {
+      throw new Error(
+        `Invalid primary type(s): ${invalid.join(', ')}. ` +
+          `Valid: ${RELEASE_GROUP_PRIMARY_TYPES.join(', ')}`,
+      );
+    }
+    return types;
+  }
   return value;
 }
 
 function patchFor(
   key: string,
-  value: boolean | number | string,
+  value: boolean | number | string | string[],
 ): SettingsPatch {
   const [group, field] = key.split('.');
   return {[group]: {[field]: value}} as unknown as SettingsPatch;

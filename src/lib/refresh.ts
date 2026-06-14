@@ -40,11 +40,12 @@ export async function refresh(
   const db = AppDb.getDefault();
   const startedAt = new Date().toISOString();
   const artists = Artist.list();
+  const settings = Settings.load();
 
   // Fail fast (once, before hitting the network per-artist) if the required
   // MusicBrainz contact is missing.
   if (artists.length > 0) {
-    Settings.musicBrainzContact();
+    settings.musicBrainzContact();
   }
 
   const existing = db.prepare('SELECT 1 FROM release_groups WHERE mbid = ?');
@@ -73,6 +74,10 @@ export async function refresh(
       const now = new Date().toISOString();
       const apply = db.transaction(() => {
         for (const g of groups) {
+          // Skip release-groups whose primary type is filtered out.
+          if (!settings.supportPrimaryType(g.primaryType)) {
+            continue;
+          }
           const seen = existing.get(g.mbid);
           insert.run({
             mbid: g.mbid,
