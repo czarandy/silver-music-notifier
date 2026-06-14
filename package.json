@@ -3,6 +3,24 @@
   "version": "0.1.0",
   "description": "Track artists and get notified of their new music releases from MusicBrainz, via CLI or a local web UI.",
   "license": "MIT",
+  "author": "Andrey Goder <andy.goder@gmail.com>",
+  "homepage": "https://github.com/czarandy/silver-music-notifier#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/czarandy/silver-music-notifier.git"
+  },
+  "bugs": {
+    "url": "https://github.com/czarandy/silver-music-notifier/issues"
+  },
+  "keywords": [
+    "musicbrainz",
+    "music",
+    "new-releases",
+    "release-radar",
+    "notifier",
+    "cli",
+    "sqlite"
+  ],
   "type": "module",
   "bin": {
     "silver-music-notifier": "dist/cli/index.js"
@@ -10,6 +28,9 @@
   "files": [
     "dist"
   ],
+  "publishConfig": {
+    "access": "public"
+  },
   "engines": {
     "node": ">=20"
   },
@@ -21,10 +42,14 @@
     "prepare": "husky && npm run build",
     "refresh": "tsx src/cli/index.ts refresh",
     "typecheck": "tsc --noEmit",
+    "test": "vitest run",
     "lint": "eslint .",
     "lint:fix": "eslint --fix .",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "check:exports": "publint",
+    "smoke:package": "npm run build && node scripts/package-smoke-test.mjs",
+    "release": "bash scripts/release.sh"
   },
   "lint-staged": {
     "*.{ts,tsx}": [
@@ -56,9 +81,11 @@
     "@vitejs/plugin-react": "^4.3.4",
     "concurrently": "^9.1.0",
     "eslint": "^9.39.4",
+    "globals": "^15.15.0",
     "husky": "^9.1.7",
     "lint-staged": "^15.5.2",
     "prettier": "^3.8.4",
+    "publint": "^0.3.21",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "silver-ui": "^0.6.0",
@@ -66,6 +93,7 @@
     "tsx": "^4.19.2",
     "typescript": "^5.7.2",
     "typescript-eslint": "^8.61.0",
-    "vite": "^6.0.0"
+    "vite": "^6.0.0",
+    "vitest": "^4.1.8"
   }
 }

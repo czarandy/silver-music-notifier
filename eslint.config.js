@@ -1,4 +1,5 @@
 import js from '@eslint/js';
+import globals from 'globals';
 import tseslint from 'typescript-eslint';
 
 export default tseslint.config(
@@ -14,6 +15,16 @@ export default tseslint.config(
       // positives on browser/node globals here.
       'no-undef': 'off',
       // Require braces around all control statements (matches silver-ui).
+      curly: 'error',
+    },
+  },
+  // Node scripts and config files (build/release tooling).
+  {
+    files: ['**/*.{js,mjs,cjs}'],
+    languageOptions: {
+      globals: globals.node,
+    },
+    rules: {
       curly: 'error',
     },
   },

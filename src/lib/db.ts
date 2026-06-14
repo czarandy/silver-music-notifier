@@ -20,50 +20,65 @@ export interface ReleaseGroupRow {
   last_seen_at: string;
 }
 
-let db: Database.Database | null = null;
+export class AppDb {
+  readonly connection: Database.Database;
 
-// Open (and lazily initialize) the SQLite database. Schema creation is idempotent
-// so this is safe to call from every CLI invocation and from the server.
-export function getDb(): Database.Database {
-  if (db) {
-    return db;
+  constructor(path = dbPath()) {
+    this.connection = new Database(path);
+    this.initialize();
   }
-  db = new Database(dbPath());
-  db.pragma('journal_mode = WAL');
-  db.pragma('foreign_keys = ON');
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS artists (
-      mbid           TEXT PRIMARY KEY,
-      name           TEXT NOT NULL,
-      sort_name      TEXT,
-      disambiguation TEXT,
-      added_at       TEXT NOT NULL
-    );
 
-    CREATE TABLE IF NOT EXISTS release_groups (
-      mbid               TEXT PRIMARY KEY,
-      artist_mbid        TEXT NOT NULL REFERENCES artists(mbid) ON DELETE CASCADE,
-      title              TEXT NOT NULL,
-      primary_type       TEXT,
-      secondary_types    TEXT,
-      first_release_date TEXT,
-      first_seen_at      TEXT NOT NULL,
-      last_seen_at       TEXT NOT NULL
-    );
+  close(): void {
+    this.connection.close();
+  }
 
-    CREATE INDEX IF NOT EXISTS idx_rg_artist ON release_groups(artist_mbid);
+  private initialize(): void {
+    this.connection.pragma('journal_mode = WAL');
+    this.connection.pragma('foreign_keys = ON');
+    this.connection.exec(`
+      CREATE TABLE IF NOT EXISTS artists (
+        mbid           TEXT PRIMARY KEY,
+        name           TEXT NOT NULL,
+        sort_name      TEXT,
+        disambiguation TEXT,
+        added_at       TEXT NOT NULL
+      );
 
-    CREATE TABLE IF NOT EXISTS settings (
-      key   TEXT PRIMARY KEY,
-      value TEXT NOT NULL
-    );
-  `);
-  return db;
+      CREATE TABLE IF NOT EXISTS release_groups (
+        mbid               TEXT PRIMARY KEY,
+        artist_mbid        TEXT NOT NULL REFERENCES artists(mbid) ON DELETE CASCADE,
+        title              TEXT NOT NULL,
+        primary_type       TEXT,
+        secondary_types    TEXT,
+        first_release_date TEXT,
+        first_seen_at      TEXT NOT NULL,
+        last_seen_at       TEXT NOT NULL
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_rg_artist ON release_groups(artist_mbid);
+
+      CREATE TABLE IF NOT EXISTS settings (
+        key   TEXT PRIMARY KEY,
+        value TEXT NOT NULL
+      );
+    `);
+  }
+}
+
+let appDb: AppDb | null = null;
+
+export function openDb(path = dbPath()): AppDb {
+  return new AppDb(path);
+}
+
+// Open (and lazily initialize) the default SQLite database. Schema creation is
+// idempotent so this is safe to call from every CLI invocation and the server.
+export function getDb(): Database.Database {
+  appDb ??= openDb();
+  return appDb.connection;
 }
 
 export function closeDb(): void {
-  if (db) {
-    db.close();
-    db = null;
-  }
+  appDb?.close();
+  appDb = null;
 }
