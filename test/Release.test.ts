@@ -4,7 +4,7 @@ import {join} from 'node:path';
 import {afterEach, beforeEach, describe, expect, it} from 'vitest';
 import {AppDb} from '../src/lib/AppDb.js';
 import {Release} from '../src/lib/Release.js';
-import {setLastRefreshAt} from '../src/lib/settings.js';
+import {Settings} from '../src/lib/Settings.js';
 
 const originalDataDir = process.env.SILVER_MUSIC_NOTIFIER_DATA_DIR;
 let tempDir: string;
@@ -70,7 +70,7 @@ describe('Release', () => {
       firstReleaseDate: '2026-01-01',
       firstSeenAt: '2026-01-04T00:00:00.000Z',
     });
-    setLastRefreshAt('2026-01-03T00:00:00.000Z');
+    Settings.setLastRefreshAt('2026-01-03T00:00:00.000Z');
 
     expect(Release.list().map(r => r.title)).toEqual([
       'New Release',

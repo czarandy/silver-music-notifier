@@ -4,7 +4,7 @@ import {
   type ReleaseGroupPrimaryType,
   type ReleaseGroupSecondaryType,
 } from './musicbrainz.js';
-import {mbContact, setLastRefreshAt} from './settings.js';
+import {Settings} from './Settings.js';
 import {notifyNewReleases} from './notify.js';
 import {Artist} from './Artist.js';
 
@@ -44,7 +44,7 @@ export async function refresh(
   // Fail fast (once, before hitting the network per-artist) if the required
   // MusicBrainz contact is missing.
   if (artists.length > 0) {
-    mbContact();
+    Settings.musicBrainzContact();
   }
 
   const existing = db.prepare('SELECT 1 FROM release_groups WHERE mbid = ?');
@@ -105,7 +105,7 @@ export async function refresh(
     }
   }
 
-  setLastRefreshAt(startedAt);
+  Settings.setLastRefreshAt(startedAt);
 
   const summary: RefreshSummary = {
     scannedArtists: artists.length,

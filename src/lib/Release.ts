@@ -1,5 +1,5 @@
 import {AppDb} from './AppDb.js';
-import {getLastRefreshAt} from './settings.js';
+import {Settings} from './Settings.js';
 
 export interface ReleaseListOptions {
   onlyNew?: boolean;
@@ -41,7 +41,7 @@ export class Release {
   }
 
   static list(opts: ReleaseListOptions = {}): Release[] {
-    const lastRefresh = getLastRefreshAt();
+    const lastRefresh = Settings.getLastRefreshAt();
     const rows = AppDb.getDefault()
       .prepare(
         `SELECT rg.mbid, rg.artist_mbid, a.name AS artist_name, rg.title,

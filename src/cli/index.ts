@@ -11,8 +11,14 @@ import {ensureMbContact} from './ensureContact.js';
 const program = new Command();
 
 // A configured MusicBrainz contact is required. Ensure it once at the root
-// (prompting interactively on first use) rather than in each command.
-program.hook('preAction', async () => {
+// (prompting interactively on first use) rather than in each command. `config`
+// is exempt — you need it to set the contact in the first place.
+program.hook('preAction', async (_thisCommand, actionCommand) => {
+  for (let cmd: Command | null = actionCommand; cmd; cmd = cmd.parent) {
+    if (cmd.name() === 'config') {
+      return;
+    }
+  }
   await ensureMbContact();
 });
 

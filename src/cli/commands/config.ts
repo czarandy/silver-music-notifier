@@ -1,5 +1,5 @@
 import type {Command} from 'commander';
-import {getSettings, saveSettings, type Settings} from '../../lib/settings.js';
+import {Settings, type SettingsPatch} from '../../lib/Settings.js';
 
 // Flatten the settings object into dotted keys for display/editing, masking the
 // SMTP password so it is never printed.
@@ -32,9 +32,9 @@ function coerce(key: string, value: string): boolean | number | string {
 function patchFor(
   key: string,
   value: boolean | number | string,
-): Partial<Settings> {
+): SettingsPatch {
   const [group, field] = key.split('.');
-  return {[group]: {[field]: value}} as unknown as Partial<Settings>;
+  return {[group]: {[field]: value}} as unknown as SettingsPatch;
 }
 
 export function registerConfig(program: Command): void {
@@ -45,7 +45,7 @@ export function registerConfig(program: Command): void {
     .description('Print settings (or a single key)')
     .argument('[key]', 'dotted key, e.g. notify.email')
     .action((key?: string) => {
-      const flat = flatten(getSettings());
+      const flat = flatten(Settings.load());
       if (key) {
         if (!(key in flat)) {
           console.error(`Unknown key: ${key}`);
@@ -66,7 +66,7 @@ export function registerConfig(program: Command): void {
     .argument('<key>', 'dotted key, e.g. smtp.host')
     .argument('<value>', 'new value')
     .action((key: string, value: string) => {
-      const valid = new Set(Object.keys(flatten(getSettings())));
+      const valid = new Set(Object.keys(flatten(Settings.load())));
       if (!valid.has(key)) {
         console.error(
           `Unknown key: ${key}\nValid keys: ${[...valid].join(', ')}`,
@@ -74,7 +74,7 @@ export function registerConfig(program: Command): void {
         process.exitCode = 1;
         return;
       }
-      saveSettings(patchFor(key, coerce(key, value)));
+      Settings.save(patchFor(key, coerce(key, value)));
       console.log(`Set ${key}.`);
     });
 }

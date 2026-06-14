@@ -1,6 +1,6 @@
 import nodemailer from 'nodemailer';
 import notifier from 'node-notifier';
-import {getSettings, smtpIsConfigured, type Settings} from './settings.js';
+import {Settings} from './Settings.js';
 import type {NewRelease} from './refresh.js';
 
 function summaryLine(newReleases: NewRelease[]): string {
@@ -89,7 +89,7 @@ export async function notifyNewReleases(
   if (newReleases.length === 0) {
     return;
   }
-  const s = getSettings();
+  const s = Settings.load();
 
   if (s.notify.desktop) {
     try {
@@ -100,7 +100,7 @@ export async function notifyNewReleases(
   }
 
   if (s.notify.email) {
-    if (!smtpIsConfigured(s)) {
+    if (!s.smtpIsConfigured()) {
       console.warn('Email enabled but SMTP not configured — skipping email.');
     } else {
       try {
@@ -115,8 +115,8 @@ export async function notifyNewReleases(
 // Send a test email using the current (or provided) SMTP settings. Throws on
 // failure so callers can surface the error to the user.
 export async function sendTestEmail(override?: Settings): Promise<void> {
-  const s = override ?? getSettings();
-  if (!smtpIsConfigured(s)) {
+  const s = override ?? Settings.load();
+  if (!s.smtpIsConfigured()) {
     throw new Error(
       'SMTP is not configured (host, user, and recipient required).',
     );

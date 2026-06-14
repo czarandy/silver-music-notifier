@@ -1,6 +1,6 @@
 import {MusicBrainzApi} from 'musicbrainz-api';
 import packageJson from '../../package.json' with {type: 'json'};
-import {mbContact} from './settings.js';
+import {Settings} from './Settings.js';
 
 // App version is informational for the MusicBrainz User-Agent.
 const APP_VERSION = packageJson.version;
@@ -9,7 +9,7 @@ let client: MusicBrainzApi | null = null;
 
 function api(): MusicBrainzApi {
   // Recreate if the contact changed; cheap enough and keeps the User-Agent honest.
-  const contact = mbContact();
+  const contact = Settings.musicBrainzContact();
   if (
     !client ||
     (client as unknown as {_contact?: string})._contact !== contact

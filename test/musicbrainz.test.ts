@@ -21,8 +21,10 @@ vi.mock('musicbrainz-api', () => ({
   MusicBrainzApi: mocks.MusicBrainzApi,
 }));
 
-vi.mock('../src/lib/settings.js', () => ({
-  mbContact: mocks.mbContact,
+vi.mock('../src/lib/Settings.js', () => ({
+  Settings: {
+    musicBrainzContact: mocks.mbContact,
+  },
 }));
 
 describe('musicbrainz', () => {

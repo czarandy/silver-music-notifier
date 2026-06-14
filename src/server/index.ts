@@ -7,7 +7,7 @@ import {refresh} from '../lib/refresh.js';
 import {sendTestEmail} from '../lib/notify.js';
 import {Artist} from '../lib/Artist.js';
 import {Release} from '../lib/Release.js';
-import {getSettings, saveSettings, type Settings} from '../lib/settings.js';
+import {Settings, type SettingsPatch} from '../lib/Settings.js';
 
 // Locate the built web assets. When bundled by tsup the file lives at
 // dist/cli/index.js, so dist/web is two levels up; during `tsx` dev runs the
@@ -92,23 +92,23 @@ export function createApp() {
   );
 
   api.get('/settings', (_req, res) => {
-    res.json(getSettings());
+    res.json(Settings.load());
   });
 
   api.put('/settings', (req, res) => {
-    const patch = req.body as Partial<Settings>;
-    res.json(saveSettings(patch));
+    const patch = req.body as SettingsPatch;
+    res.json(Settings.save(patch));
   });
 
   api.post(
     '/settings/test-email',
     asyncRoute(async (req, res) => {
       // Allow testing with the posted settings (saved first), or current ones.
-      const patch = req.body as Partial<Settings> | undefined;
+      const patch = req.body as SettingsPatch | undefined;
       const settings =
         patch && Object.keys(patch).length
-          ? saveSettings(patch)
-          : getSettings();
+          ? Settings.save(patch)
+          : Settings.load();
       await sendTestEmail(settings);
       res.json({ok: true});
     }),
