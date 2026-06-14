@@ -1,0 +1,140 @@
+import express, { type Request, type Response } from "express";
+import { fileURLToPath } from "node:url";
+import { existsSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { searchArtist } from "../lib/musicbrainz.js";
+import { refresh } from "../lib/refresh.js";
+import { sendTestEmail } from "../lib/notify.js";
+import {
+  addArtist,
+  listArtists,
+  listReleases,
+  removeArtist,
+} from "../lib/store.js";
+import {
+  getSettings,
+  saveSettings,
+  type Settings,
+} from "../lib/settings.js";
+
+// Locate the built web assets. When bundled by tsup the file lives at
+// dist/cli/index.js, so dist/web is two levels up; during `tsx` dev runs the
+// file is src/server/index.ts and dist/web may not exist yet (the dev server is
+// served by Vite instead).
+function webDir(): string | null {
+  const here = dirname(fileURLToPath(import.meta.url));
+  const candidates = [
+    join(here, "..", "web"), // dist/cli/index.js -> dist/web
+    join(here, "..", "..", "dist", "web"), // src/server/index.ts -> dist/web
+  ];
+  return candidates.find((c) => existsSync(c)) ?? null;
+}
+
+function asyncRoute(
+  fn: (req: Request, res: Response) => Promise<void>,
+): (req: Request, res: Response) => void {
+  return (req, res) => {
+    fn(req, res).catch((err) => {
+      console.error(err);
+      res
+        .status(500)
+        .json({ error: err instanceof Error ? err.message : String(err) });
+    });
+  };
+}
+
+export function createApp() {
+  const app = express();
+  app.use(express.json());
+
+  const api = express.Router();
+
+  api.get("/artists", (_req, res) => {
+    res.json(listArtists());
+  });
+
+  api.get(
+    "/artists/search",
+    asyncRoute(async (req, res) => {
+      const q = String(req.query.q ?? "").trim();
+      if (!q) {
+        res.json([]);
+        return;
+      }
+      res.json(await searchArtist(q));
+    }),
+  );
+
+  api.post("/artists", (req, res) => {
+    const { mbid, name, sortName, disambiguation } = req.body ?? {};
+    if (!mbid || !name) {
+      res.status(400).json({ error: "mbid and name are required" });
+      return;
+    }
+    const added = addArtist({ mbid, name, sortName, disambiguation });
+    res.json({ added });
+  });
+
+  api.delete("/artists/:mbid", (req, res) => {
+    const removed = removeArtist(req.params.mbid);
+    if (!removed) {
+      res.status(404).json({ error: "artist not tracked" });
+      return;
+    }
+    res.json({ removed });
+  });
+
+  api.get("/releases", (req, res) => {
+    const onlyNew = req.query.new === "1" || req.query.new === "true";
+    const limit = req.query.limit ? Number(req.query.limit) : undefined;
+    res.json(listReleases({ onlyNew, limit }));
+  });
+
+  api.post(
+    "/refresh",
+    asyncRoute(async (_req, res) => {
+      const summary = await refresh();
+      res.json(summary);
+    }),
+  );
+
+  api.get("/settings", (_req, res) => {
+    res.json(getSettings());
+  });
+
+  api.put("/settings", (req, res) => {
+    const patch = req.body as Partial<Settings>;
+    res.json(saveSettings(patch));
+  });
+
+  api.post(
+    "/settings/test-email",
+    asyncRoute(async (req, res) => {
+      // Allow testing with the posted settings (saved first), or current ones.
+      const patch = req.body as Partial<Settings> | undefined;
+      const settings = patch && Object.keys(patch).length ? saveSettings(patch) : getSettings();
+      await sendTestEmail(settings);
+      res.json({ ok: true });
+    }),
+  );
+
+  app.use("/api", api);
+
+  // Serve the built SPA (production). In dev, Vite serves the frontend and
+  // proxies /api here, so a missing web dir is fine.
+  const dir = webDir();
+  if (dir) {
+    app.use(express.static(dir));
+    app.get("*", (_req, res) => {
+      res.sendFile(join(dir, "index.html"));
+    });
+  }
+
+  return app;
+}
+
+export function startServer(port: number): Promise<void> {
+  return new Promise((resolve) => {
+    createApp().listen(port, () => resolve());
+  });
+}
