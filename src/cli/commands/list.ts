@@ -1,12 +1,12 @@
 import type {Command} from 'commander';
-import {listArtists} from '../../lib/store.js';
+import {Artist} from '../../lib/Artist.js';
 
 export function registerList(program: Command): void {
   program
     .command('list')
     .description('List tracked artists')
     .action(() => {
-      const artists = listArtists();
+      const artists = Artist.list();
       if (artists.length === 0) {
         console.log(
           'No artists tracked yet. Add one with: silver-music-notifier add <name>',

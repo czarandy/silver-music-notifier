@@ -6,8 +6,15 @@ import {registerRemove} from './commands/remove.js';
 import {registerRefresh} from './commands/refresh.js';
 import {registerReleases} from './commands/releases.js';
 import {registerConfig} from './commands/config.js';
+import {ensureMbContact} from './ensureContact.js';
 
 const program = new Command();
+
+// A configured MusicBrainz contact is required. Ensure it once at the root
+// (prompting interactively on first use) rather than in each command.
+program.hook('preAction', async () => {
+  await ensureMbContact();
+});
 
 program
   .name('silver-music-notifier')

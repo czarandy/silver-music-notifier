@@ -104,13 +104,17 @@ export function setLastRefreshAt(iso: string): void {
   writeRaw(LAST_REFRESH_KEY, iso);
 }
 
-// The MusicBrainz contact string, falling back to a placeholder so the API is
-// always usable (MusicBrainz only requires *some* contact for its User-Agent).
+// The MusicBrainz contact string used in the API User-Agent. MusicBrainz
+// requires a meaningful contact (an email or URL) and throttles/blocks requests
+// without one, so this is mandatory — throw with guidance if it is unset.
 export function mbContact(): string {
-  const s = getSettings();
-  return (
-    s.musicbrainz.contact ||
-    process.env.SMN_MB_CONTACT ||
-    'silver-music-notifier (no contact configured)'
-  );
+  const contact = getSettings().musicbrainz.contact.trim();
+  if (!contact) {
+    throw new Error(
+      'MusicBrainz contact is not set. MusicBrainz requires a contact (email or ' +
+        'URL) to query its API. Set it in the web UI Settings, or run:\n' +
+        '  silver-music-notifier config set musicbrainz.contact you@example.com',
+    );
+  }
+  return contact;
 }

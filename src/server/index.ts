@@ -5,12 +5,8 @@ import {dirname, join} from 'node:path';
 import {searchArtist} from '../lib/musicbrainz.js';
 import {refresh} from '../lib/refresh.js';
 import {sendTestEmail} from '../lib/notify.js';
-import {
-  addArtist,
-  listArtists,
-  listReleases,
-  removeArtist,
-} from '../lib/store.js';
+import {Artist} from '../lib/Artist.js';
+import {Release} from '../lib/Release.js';
 import {getSettings, saveSettings, type Settings} from '../lib/settings.js';
 
 // Locate the built web assets. When bundled by tsup the file lives at
@@ -46,7 +42,7 @@ export function createApp() {
   const api = express.Router();
 
   api.get('/artists', (_req, res) => {
-    res.json(listArtists());
+    res.json(Artist.list());
   });
 
   api.get(
@@ -67,23 +63,24 @@ export function createApp() {
       res.status(400).json({error: 'mbid and name are required'});
       return;
     }
-    const added = addArtist({mbid, name, sortName, disambiguation});
+    const added = Artist.add({mbid, name, sortName, disambiguation});
     res.json({added});
   });
 
   api.delete('/artists/:mbid', (req, res) => {
-    const removed = removeArtist(req.params.mbid);
-    if (!removed) {
+    const artist = Artist.get(req.params.mbid);
+    if (!artist) {
       res.status(404).json({error: 'artist not tracked'});
       return;
     }
-    res.json({removed});
+    artist.remove();
+    res.json({removed: artist});
   });
 
   api.get('/releases', (req, res) => {
     const onlyNew = req.query.new === '1' || req.query.new === 'true';
     const limit = req.query.limit ? Number(req.query.limit) : undefined;
-    res.json(listReleases({onlyNew, limit}));
+    res.json(Release.list({onlyNew, limit}));
   });
 
   api.post(

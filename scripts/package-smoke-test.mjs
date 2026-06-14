@@ -85,7 +85,10 @@ try {
   // 6. A read-only subcommand should work against an isolated data dir.
   const out = execFileSync('node', [binPath, 'list'], {
     encoding: 'utf8',
-    env: {...process.env, SMN_DATA_DIR: join(tempDir, 'data')},
+    env: {
+      ...process.env,
+      SILVER_MUSIC_NOTIFIER_DATA_DIR: join(tempDir, 'data'),
+    },
   });
   if (!out.toLowerCase().includes('no artists')) {
     fail('CLI `list` on an empty store did not behave as expected:\n' + out);

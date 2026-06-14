@@ -1,9 +1,9 @@
 export interface Artist {
   mbid: string;
   name: string;
-  sort_name: string | null;
+  sortName: string | null;
   disambiguation: string | null;
-  added_at: string;
+  addedAt: string;
   // Index signature so the type satisfies silver-ui's Table<T> constraint.
   [key: string]: unknown;
 }

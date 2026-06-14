@@ -1,6 +1,6 @@
 import type {Command} from 'commander';
 import {searchArtist} from '../../lib/musicbrainz.js';
-import {addArtist} from '../../lib/store.js';
+import {Artist} from '../../lib/Artist.js';
 
 export function registerAdd(program: Command): void {
   program
@@ -14,7 +14,7 @@ export function registerAdd(program: Command): void {
     .option('-y, --yes', 'add the top search result without prompting')
     .action(async (query: string, opts: {mbid?: string; yes?: boolean}) => {
       if (opts.mbid) {
-        const added = addArtist({mbid: opts.mbid, name: query});
+        const added = Artist.add({mbid: opts.mbid, name: query});
         console.log(added ? `Added ${query}.` : `${query} is already tracked.`);
         return;
       }
@@ -45,7 +45,7 @@ export function registerAdd(program: Command): void {
         chosen = results.find(r => r.mbid === mbid)!;
       }
 
-      const added = addArtist({
+      const added = Artist.add({
         mbid: chosen.mbid,
         name: chosen.name,
         sortName: chosen.sortName,

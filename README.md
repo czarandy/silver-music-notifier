@@ -13,6 +13,20 @@ npm install -g silver-music-notifier
 This requires a working build toolchain for `better-sqlite3` (the native SQLite
 driver), which is built automatically on install.
 
+## MusicBrainz contact (required)
+
+MusicBrainz requires every API client to identify a contact (an email or URL) in
+its User-Agent, and throttles or blocks requests without one. The first time you
+run a command that hits the API (`add` or `refresh`), the CLI **prompts you for a
+contact** and saves it. You can also set it ahead of time:
+
+```bash
+silver-music-notifier config set musicbrainz.contact you@example.com
+```
+
+or in the web UI's **Settings** view. In a non-interactive context (no TTY), the
+command errors with this guidance instead of prompting.
+
 ## Usage
 
 ### Web UI
@@ -27,7 +41,8 @@ The UI has three views:
 - **Releases** — a feed of every known release-group, newest first, with a
   **Refresh** button and a "New" badge on releases discovered in the last refresh.
 - **Artists** — search MusicBrainz and add/remove the artists you follow.
-- **Settings** — choose notification methods and configure SMTP for email.
+- **Settings** — set the MusicBrainz contact (required), choose notification
+  methods, and configure SMTP for email.
 
 ### CLI
 
@@ -57,19 +72,27 @@ When `refresh` finds releases it has never seen before, it can notify you three 
 
 ## Data & configuration
 
-State lives in a single SQLite file in your per-user data directory
-(e.g. `~/.config/silver-music-notifier/data.db` on Linux). Override the location
-with the `SMN_DATA_DIR` environment variable.
+State lives in a single SQLite file (`data.db`) in your per-user data directory:
+
+- **Linux:** `$XDG_DATA_HOME/silver-music-notifier` (usually `~/.local/share/silver-music-notifier`)
+- **macOS:** `~/Library/Application Support/silver-music-notifier`
+- **Windows:** `%LOCALAPPDATA%\silver-music-notifier\Data`
+
+Override the location with the `SILVER_MUSIC_NOTIFIER_DATA_DIR` environment
+variable.
 
 > **Note:** SMTP credentials (including the password) are stored in plaintext in
 > that local SQLite file. This is a single-user local tool; treat the data
 > directory accordingly.
 
-Other environment variables:
+Notification methods (in-page / desktop / email) and the MusicBrainz contact are
+configured in the web UI's **Settings** view or via `silver-music-notifier
+config set …` — not through environment variables.
 
-- `SMN_DATA_DIR` — override the data directory.
-- `SMN_DISABLE_DESKTOP=1` — suppress desktop notifications.
-- `SMN_MB_CONTACT` — fallback MusicBrainz contact for the API User-Agent.
+The only environment variable is:
+
+- `SILVER_MUSIC_NOTIFIER_DATA_DIR` — override the data directory (must be an env
+  var, since all other settings are stored inside it).
 
 ## Development
 

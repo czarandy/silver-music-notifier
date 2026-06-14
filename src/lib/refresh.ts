@@ -4,9 +4,9 @@ import {
   type ReleaseGroupPrimaryType,
   type ReleaseGroupSecondaryType,
 } from './musicbrainz.js';
-import {setLastRefreshAt} from './settings.js';
+import {mbContact, setLastRefreshAt} from './settings.js';
 import {notifyNewReleases} from './notify.js';
-import type {ArtistRow} from './store.js';
+import {Artist} from './Artist.js';
 
 export interface NewRelease {
   mbid: string;
@@ -28,7 +28,7 @@ export interface RefreshSummary {
 
 export interface RefreshOptions {
   notify?: boolean;
-  onProgress?: (artist: ArtistRow, index: number, total: number) => void;
+  onProgress?: (artist: Artist, index: number, total: number) => void;
 }
 
 // Fetch release-groups for every tracked artist, upsert them, and collect the
@@ -39,9 +39,13 @@ export async function refresh(
 ): Promise<RefreshSummary> {
   const db = AppDb.getDefault();
   const startedAt = new Date().toISOString();
-  const artists = db
-    .prepare('SELECT * FROM artists ORDER BY name COLLATE NOCASE')
-    .all() as ArtistRow[];
+  const artists = Artist.list();
+
+  // Fail fast (once, before hitting the network per-artist) if the required
+  // MusicBrainz contact is missing.
+  if (artists.length > 0) {
+    mbContact();
+  }
 
   const existing = db.prepare('SELECT 1 FROM release_groups WHERE mbid = ?');
   const insert = db.prepare(`

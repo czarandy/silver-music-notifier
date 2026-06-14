@@ -91,7 +91,7 @@ export async function notifyNewReleases(
   }
   const s = getSettings();
 
-  if (s.notify.desktop && !process.env.SMN_DISABLE_DESKTOP) {
+  if (s.notify.desktop) {
     try {
       desktopNotify(newReleases);
     } catch (err) {

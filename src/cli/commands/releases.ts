@@ -1,5 +1,5 @@
 import type {Command} from 'commander';
-import {listReleases} from '../../lib/store.js';
+import {Release} from '../../lib/Release.js';
 
 export function registerReleases(program: Command): void {
   program
@@ -8,7 +8,7 @@ export function registerReleases(program: Command): void {
     .option('--new', 'only show releases discovered in the last refresh')
     .option('-n, --limit <n>', 'limit the number of rows', v => Number(v))
     .action((opts: {new?: boolean; limit?: number}) => {
-      const items = listReleases({onlyNew: opts.new, limit: opts.limit});
+      const items = Release.list({onlyNew: opts.new, limit: opts.limit});
       if (items.length === 0) {
         console.log(
           opts.new

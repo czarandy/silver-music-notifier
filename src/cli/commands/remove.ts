@@ -1,5 +1,5 @@
 import type {Command} from 'commander';
-import {removeArtist} from '../../lib/store.js';
+import {Artist} from '../../lib/Artist.js';
 
 export function registerRemove(program: Command): void {
   program
@@ -8,12 +8,13 @@ export function registerRemove(program: Command): void {
     .description('Stop tracking an artist (by MBID or name)')
     .argument('<idOrName>', 'MusicBrainz MBID or exact artist name')
     .action((idOrName: string) => {
-      const removed = removeArtist(idOrName);
-      if (!removed) {
+      const artist = Artist.getByMbidOrName(idOrName);
+      if (!artist) {
         console.log(`No tracked artist matched "${idOrName}".`);
         process.exitCode = 1;
         return;
       }
-      console.log(`Removed ${removed.name} (${removed.mbid}).`);
+      artist.remove();
+      console.log(`Removed ${artist.name} (${artist.mbid}).`);
     });
 }
