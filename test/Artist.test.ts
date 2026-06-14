@@ -32,6 +32,8 @@ describe('Artist', () => {
         name: 'beta Artist',
         sortName: 'Artist, Beta',
         disambiguation: 'second',
+        type: 'Group',
+        country: 'CA',
       }),
     ).toBe(true);
     expect(Artist.add({mbid: 'artist-1', name: 'Alpha Artist'})).toBe(true);
@@ -46,6 +48,8 @@ describe('Artist', () => {
       name: 'beta Artist',
       sortName: 'Artist, Beta',
       disambiguation: 'second',
+      type: 'Group',
+      country: 'CA',
     });
 
     const artist = Artist.getByMbidOrName('BETA ARTIST');

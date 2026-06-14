@@ -5,6 +5,8 @@ interface ArtistRow {
   name: string;
   sort_name: string | null;
   disambiguation: string | null;
+  type: string | null;
+  country: string | null;
   added_at: string;
 }
 
@@ -13,6 +15,8 @@ export interface ArtistAddInput {
   name: string;
   sortName?: string | null;
   disambiguation?: string | null;
+  type?: string | null;
+  country?: string | null;
 }
 
 export class Artist {
@@ -20,6 +24,8 @@ export class Artist {
   readonly name: string;
   readonly sortName: string | null;
   readonly disambiguation: string | null;
+  readonly type: string | null;
+  readonly country: string | null;
   readonly addedAt: string;
 
   private constructor(row: ArtistRow) {
@@ -27,6 +33,8 @@ export class Artist {
     this.name = row.name;
     this.sortName = row.sort_name;
     this.disambiguation = row.disambiguation;
+    this.type = row.type;
+    this.country = row.country;
     this.addedAt = row.added_at;
   }
 
@@ -60,8 +68,9 @@ export class Artist {
   static add(input: ArtistAddInput): boolean {
     const res = AppDb.getDefault()
       .prepare(
-        `INSERT INTO artists (mbid, name, sort_name, disambiguation, added_at)
-         VALUES (?, ?, ?, ?, ?)
+        `INSERT INTO artists
+           (mbid, name, sort_name, disambiguation, type, country, added_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?)
          ON CONFLICT(mbid) DO NOTHING`,
       )
       .run(
@@ -69,6 +78,8 @@ export class Artist {
         input.name,
         input.sortName ?? null,
         input.disambiguation ?? null,
+        input.type ?? null,
+        input.country ?? null,
         new Date().toISOString(),
       );
     return res.changes > 0;

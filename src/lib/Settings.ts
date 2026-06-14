@@ -71,7 +71,7 @@ const DEFAULT_SETTINGS: SettingsInput = {
     // Default to full studio albums only.
     primaryTypes: ['Album'],
     // Drop the common "album" variants that aren't new studio releases.
-    excludeSecondaryTypes: ['Remix', 'Live', 'Compilation'],
+    excludeSecondaryTypes: ['Remix', 'Live', 'Compilation', 'Mixtape/Street'],
   },
 };
 
@@ -151,9 +151,8 @@ export class Settings {
   }
 
   // Whether a release-group with this primary type should be kept on refresh.
-  // Untyped release-groups (null) are always kept.
   supportPrimaryType(type: ReleaseGroupPrimaryType | null): boolean {
-    return type === null || this.releaseFilter.primaryTypes.includes(type);
+    return type !== null && this.releaseFilter.primaryTypes.includes(type);
   }
 
   // Whether a release-group with these secondary types should be kept on

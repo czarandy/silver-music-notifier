@@ -1,6 +1,17 @@
 import type {Command} from 'commander';
 import {searchArtist} from '../../lib/musicbrainz.js';
 import {Artist} from '../../lib/Artist.js';
+import {refreshArtist} from '../../lib/refresh.js';
+
+async function refreshIfAdded(added: boolean, mbid: string): Promise<void> {
+  if (!added) {
+    return;
+  }
+  const artist = Artist.get(mbid);
+  if (artist) {
+    await refreshArtist(artist, {notify: false});
+  }
+}
 
 export function registerAdd(program: Command): void {
   program
@@ -15,6 +26,7 @@ export function registerAdd(program: Command): void {
     .action(async (query: string, opts: {mbid?: string; yes?: boolean}) => {
       if (opts.mbid) {
         const added = Artist.add({mbid: opts.mbid, name: query});
+        await refreshIfAdded(added, opts.mbid);
         console.log(added ? `Added ${query}.` : `${query} is already tracked.`);
         return;
       }
@@ -50,7 +62,10 @@ export function registerAdd(program: Command): void {
         name: chosen.name,
         sortName: chosen.sortName,
         disambiguation: chosen.disambiguation,
+        type: chosen.type,
+        country: chosen.country,
       });
+      await refreshIfAdded(added, chosen.mbid);
       console.log(
         added
           ? `Added ${chosen.name} (${chosen.mbid}).`

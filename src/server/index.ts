@@ -3,7 +3,7 @@ import {fileURLToPath} from 'node:url';
 import {existsSync} from 'node:fs';
 import {dirname, join} from 'node:path';
 import {searchArtist} from '../lib/musicbrainz.js';
-import {refresh} from '../lib/refresh.js';
+import {refresh, refreshArtist} from '../lib/refresh.js';
 import {sendTestEmail} from '../lib/notify.js';
 import {Artist} from '../lib/Artist.js';
 import {Release} from '../lib/Release.js';
@@ -58,15 +58,30 @@ export function createApp() {
     }),
   );
 
-  api.post('/artists', (req, res) => {
-    const {mbid, name, sortName, disambiguation} = req.body ?? {};
-    if (!mbid || !name) {
-      res.status(400).json({error: 'mbid and name are required'});
-      return;
-    }
-    const added = Artist.add({mbid, name, sortName, disambiguation});
-    res.json({added});
-  });
+  api.post(
+    '/artists',
+    asyncRoute(async (req, res) => {
+      const {mbid, name, sortName, disambiguation, type, country} =
+        req.body ?? {};
+      if (!mbid || !name) {
+        res.status(400).json({error: 'mbid and name are required'});
+        return;
+      }
+      const added = Artist.add({
+        mbid,
+        name,
+        sortName,
+        disambiguation,
+        type,
+        country,
+      });
+      const artist = added ? Artist.get(mbid) : undefined;
+      if (artist) {
+        await refreshArtist(artist, {notify: false});
+      }
+      res.json({added});
+    }),
+  );
 
   api.delete('/artists/:mbid', (req, res) => {
     const artist = Artist.get(req.params.mbid);

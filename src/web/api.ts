@@ -8,6 +8,8 @@ export interface Artist {
   name: string;
   sortName: string | null;
   disambiguation: string | null;
+  type: string | null;
+  country: string | null;
   addedAt: string;
   // Index signature so the type satisfies silver-ui's Table<T> constraint.
   [key: string]: unknown;
@@ -82,6 +84,8 @@ export const api = {
     name: string;
     sortName?: string;
     disambiguation?: string;
+    type?: string;
+    country?: string;
   }) =>
     req<{added: boolean}>('/artists', {
       method: 'POST',

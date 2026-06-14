@@ -1,33 +1,31 @@
-import {useCallback, useEffect, useMemo, useRef, useState} from 'react';
+import {useCallback, useMemo, useState} from 'react';
 import {useMutation, useQuery, useQueryClient} from '@tanstack/react-query';
 import {X} from 'lucide-react';
 import {
+  AutocompleteInput,
   Button,
   EmptyState,
+  Item,
+  List,
+  ListItem,
   Spinner,
-  Table,
   Tag,
-  Text,
-  TextInput,
   useToast,
-  type TableColumn,
+  type SearchSource,
+  type StandardSearchableItem,
 } from 'silver-ui';
 import {api, type Artist, type ArtistSearchResult} from '../api.js';
+
+type ArtistSearchItem = StandardSearchableItem<ArtistSearchResult>;
 
 export function ArtistsPanel() {
   const showToast = useToast();
   const queryClient = useQueryClient();
-  const [query, setQuery] = useState('');
-  const [debouncedQuery, setDebouncedQuery] = useState('');
-  const debounce = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [selectedSearchItem, setSelectedSearchItem] =
+    useState<ArtistSearchItem | null>(null);
   const artistsQuery = useQuery({
     queryKey: ['artists'],
     queryFn: api.listArtists,
-  });
-  const searchQuery = useQuery({
-    queryKey: ['artistSearch', debouncedQuery],
-    queryFn: () => api.searchArtists(debouncedQuery),
-    enabled: debouncedQuery.length >= 2,
   });
   const addMutation = useMutation({
     mutationFn: api.addArtist,
@@ -38,9 +36,11 @@ export function ArtistsPanel() {
           ? `Added ${artist.name}.`
           : `${artist.name} is already tracked.`,
       });
-      setQuery('');
-      setDebouncedQuery('');
-      await queryClient.invalidateQueries({queryKey: ['artists']});
+      setSelectedSearchItem(null);
+      await Promise.all([
+        queryClient.invalidateQueries({queryKey: ['artists']}),
+        queryClient.invalidateQueries({queryKey: ['releases']}),
+      ]);
     },
   });
   const removeMutation = useMutation({
@@ -58,37 +58,37 @@ export function ArtistsPanel() {
     },
   });
   const artists = artistsQuery.data ?? [];
-  const results: ArtistSearchResult[] =
-    debouncedQuery.length >= 2 ? (searchQuery.data ?? []) : [];
 
-  useEffect(
-    () => () => {
-      if (debounce.current) {
-        clearTimeout(debounce.current);
-      }
-    },
-    [],
+  const searchSource = useMemo<SearchSource<ArtistSearchItem>>(
+    () => ({
+      bootstrap: () => [],
+      search: async query => {
+        const q = query.trim();
+        if (q.length < 2) {
+          return [];
+        }
+        const results = await queryClient.fetchQuery({
+          queryKey: ['artistSearch', q],
+          queryFn: () => api.searchArtists(q),
+        });
+        return results.map(result => ({
+          id: result.mbid,
+          label: result.name,
+          auxiliaryData: result,
+        }));
+      },
+    }),
+    [queryClient],
   );
 
-  const updateQuery = (value: string) => {
-    setQuery(value);
-    if (debounce.current) {
-      clearTimeout(debounce.current);
-    }
-    const q = value.trim();
-    if (q.length < 2) {
-      setDebouncedQuery('');
-      return;
-    }
-    debounce.current = setTimeout(() => setDebouncedQuery(q), 350);
-  };
-
-  function add(r: ArtistSearchResult) {
+  function add(r: ArtistSearchResult): void {
     addMutation.mutate({
       mbid: r.mbid,
       name: r.name,
       sortName: r.sortName,
       disambiguation: r.disambiguation,
+      type: r.type,
+      country: r.country,
     });
   }
 
@@ -99,93 +99,74 @@ export function ArtistsPanel() {
     [removeMutation],
   );
 
-  const columns = useMemo<TableColumn<Artist>[]>(
-    () => [
-      {
-        key: 'name',
-        header: 'Artist',
-        renderCell: a => (
-          <span>
-            {a.name}
-            {a.disambiguation ? (
-              <Text color="secondary"> — {a.disambiguation}</Text>
-            ) : null}
-          </span>
-        ),
-      },
-      {
-        key: 'actions',
-        header: '',
-        align: 'end',
-        renderCell: a => (
-          <Button
-            label="Remove"
-            icon={X}
-            isIconOnly
-            variant="ghost"
-            size="sm"
-            onClick={() => remove(a)}
-          />
-        ),
-      },
-    ],
-    [remove],
+  const artistItems = useMemo(
+    () =>
+      artists.map(a => (
+        <ListItem
+          key={a.mbid}
+          label={a.name}
+          description={a.disambiguation}
+          endContent={
+            <span
+              style={{display: 'inline-flex', gap: 8, alignItems: 'center'}}>
+              <span style={{display: 'inline-flex', gap: 6}}>
+                {a.type ? <Tag label={a.type} color="gray" size="sm" /> : null}
+                {a.country ? (
+                  <Tag label={a.country} color="blue" size="sm" />
+                ) : null}
+              </span>
+              <Button
+                label="Remove"
+                icon={X}
+                isIconOnly
+                variant="ghost"
+                size="sm"
+                onClick={() => remove(a)}
+              />
+            </span>
+          }
+        />
+      )),
+    [artists, remove],
   );
 
   return (
     <div style={{display: 'flex', flexDirection: 'column', gap: 24}}>
       <section>
-        <TextInput
+        <AutocompleteInput<ArtistSearchItem>
           label="Add an artist"
           placeholder="Search MusicBrainz by name…"
-          value={query}
-          onChange={updateQuery}
-          isLoading={searchQuery.isFetching}
+          value={selectedSearchItem}
+          searchSource={searchSource}
+          debounceMs={350}
+          emptySearchResultsText="No MusicBrainz artists found"
+          onChange={item => {
+            setSelectedSearchItem(item);
+            if (item?.auxiliaryData) {
+              add(item.auxiliaryData);
+            }
+          }}
+          renderItem={item => {
+            const artist = item.auxiliaryData;
+            return (
+              <Item
+                label={item.label}
+                description={artist?.disambiguation}
+                endContent={
+                  <span style={{display: 'inline-flex', gap: 6}}>
+                    {artist?.type ? (
+                      <Tag label={artist.type} color="gray" size="sm" />
+                    ) : null}
+                    {artist?.country ? (
+                      <Tag label={artist.country} color="blue" size="sm" />
+                    ) : null}
+                  </span>
+                }
+              />
+            );
+          }}
           hasClear
         />
-        {results.length > 0 && (
-          <div
-            style={{
-              marginTop: 8,
-              border: '1px solid var(--silver-color-border, #ddd)',
-              borderRadius: 8,
-              overflow: 'hidden',
-            }}>
-            {results.map(r => (
-              <button
-                key={r.mbid}
-                onClick={() => add(r)}
-                style={{
-                  display: 'flex',
-                  width: '100%',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  gap: 8,
-                  padding: '8px 12px',
-                  background: 'none',
-                  border: 'none',
-                  borderBottom: '1px solid var(--silver-color-border, #eee)',
-                  cursor: 'pointer',
-                  textAlign: 'left',
-                }}>
-                <span>
-                  <strong>{r.name}</strong>
-                  {r.disambiguation ? (
-                    <Text color="secondary"> — {r.disambiguation}</Text>
-                  ) : null}
-                </span>
-                <span style={{display: 'flex', gap: 6}}>
-                  {r.type ? (
-                    <Tag label={r.type} color="gray" size="sm" />
-                  ) : null}
-                  {r.country ? (
-                    <Tag label={r.country} color="blue" size="sm" />
-                  ) : null}
-                </span>
-              </button>
-            ))}
-          </div>
-        )}
       </section>
 
       <section>
@@ -197,7 +178,7 @@ export function ArtistsPanel() {
             description="Search above to start tracking an artist."
           />
         ) : (
-          <Table<Artist> columns={columns} data={artists} />
+          <List hasDividers>{artistItems}</List>
         )}
       </section>
     </div>

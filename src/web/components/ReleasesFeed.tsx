@@ -45,6 +45,12 @@ export function ReleasesFeed() {
     queryKey: ['releases'],
     queryFn: api.listReleases,
   });
+  const settingsQuery = useQuery({
+    queryKey: ['settings'],
+    queryFn: api.getSettings,
+  });
+  // The "In-page New badges" setting controls whether New badges render at all.
+  const showNewBadges = settingsQuery.data?.notify.inPage ?? true;
   const refreshMutation = useMutation({
     mutationFn: api.refresh,
     onSuccess: async summary => {
@@ -105,7 +111,7 @@ export function ReleasesFeed() {
               width: '100%',
             }}>
             <span>{r.title}</span>
-            {r.isNew ? (
+            {showNewBadges && r.isNew ? (
               <button
                 type="button"
                 aria-label={`Dismiss New badge for ${r.title}`}
@@ -146,7 +152,7 @@ export function ReleasesFeed() {
         renderCell: r => formatReleaseDate(r.firstReleaseDate),
       },
     ],
-    [dismissRelease],
+    [dismissRelease, showNewBadges],
   );
 
   return (

@@ -31,15 +31,13 @@ export interface RefreshOptions {
   onProgress?: (artist: Artist, index: number, total: number) => void;
 }
 
-// Fetch release-groups for every tracked artist, upsert them, and collect the
-// ones we'd never seen before. Shared by the CLI `refresh` command and the
-// server's POST /api/refresh route.
-export async function refresh(
-  opts: RefreshOptions = {},
+async function refreshArtists(
+  artists: Artist[],
+  opts: RefreshOptions,
+  persistLastRefresh: boolean,
 ): Promise<RefreshSummary> {
   const db = AppDb.getDefault();
   const startedAt = new Date().toISOString();
-  const artists = Artist.list();
   const settings = Settings.load();
 
   // Fail fast (once, before hitting the network per-artist) if the required
@@ -111,7 +109,9 @@ export async function refresh(
     }
   }
 
-  Settings.setLastRefreshAt(startedAt);
+  if (persistLastRefresh) {
+    Settings.setLastRefreshAt(startedAt);
+  }
 
   const summary: RefreshSummary = {
     scannedArtists: artists.length,
@@ -126,4 +126,22 @@ export async function refresh(
   }
 
   return summary;
+}
+
+// Fetch release-groups for one newly tracked artist without advancing the
+// global refresh marker for already-tracked releases.
+export async function refreshArtist(
+  artist: Artist,
+  opts: RefreshOptions = {},
+): Promise<RefreshSummary> {
+  return refreshArtists([artist], opts, false);
+}
+
+// Fetch release-groups for every tracked artist, upsert them, and collect the
+// ones we'd never seen before. Shared by the CLI `refresh` command and the
+// server's POST /api/refresh route.
+export async function refresh(
+  opts: RefreshOptions = {},
+): Promise<RefreshSummary> {
+  return refreshArtists(Artist.list(), opts, true);
 }

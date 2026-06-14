@@ -37,7 +37,11 @@ export function SettingsPanel() {
       queryClient.setQueryData(['settings'], saved);
       savedRef.current = JSON.stringify(saved);
       setSettings(saved);
-      showToast({type: 'success', body: 'Settings saved.'});
+      showToast({
+        type: 'success',
+        body: 'Settings saved.',
+        autoHideDuration: 1500,
+      });
     },
   });
   const testEmailMutation = useMutation({
@@ -146,7 +150,7 @@ export function SettingsPanel() {
         />
         <Switch
           label="Email notifications"
-          description={
+          labelTooltip={
             smtpReady ? undefined : 'Configure SMTP below to enable email.'
           }
           isSelected={settings.notify.email}

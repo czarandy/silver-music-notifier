@@ -34,6 +34,8 @@ export class AppDb {
         name           TEXT NOT NULL,
         sort_name      TEXT,
         disambiguation TEXT,
+        type           TEXT,
+        country        TEXT,
         added_at       TEXT NOT NULL
       );
 
@@ -55,6 +57,8 @@ export class AppDb {
         value TEXT NOT NULL
       );
     `);
+    this.ensureColumn('artists', 'type', 'TEXT');
+    this.ensureColumn('artists', 'country', 'TEXT');
     this.ensureColumn('release_groups', 'dismissed_at', 'TEXT');
   }
 

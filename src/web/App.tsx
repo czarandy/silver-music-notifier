@@ -47,14 +47,23 @@ export function App() {
           </SideNavSection>
         </SideNav>
       }>
-      <div
-        id={`${view}-panel`}
-        role="tabpanel"
-        aria-label={NAV.find(n => n.id === view)?.label}
-        style={{maxWidth: 960, margin: '0 auto'}}>
-        {view === 'releases' && <ReleasesFeed />}
-        {view === 'artists' && <ArtistsPanel />}
-        {view === 'settings' && <SettingsPanel />}
+      {/* Keep every panel mounted and just toggle visibility. Switching tabs
+          then never remounts a panel, so there's no refetch or reset-to-loading
+          flash, and in-progress state (e.g. unsaved Settings edits) is kept. */}
+      <div style={{maxWidth: 960, margin: '0 auto'}}>
+        {NAV.map(n => (
+          <div
+            key={n.id}
+            id={`${n.id}-panel`}
+            role="tabpanel"
+            aria-label={n.label}
+            hidden={view !== n.id}
+            style={{display: view === n.id ? undefined : 'none'}}>
+            {n.id === 'releases' && <ReleasesFeed />}
+            {n.id === 'artists' && <ArtistsPanel />}
+            {n.id === 'settings' && <SettingsPanel />}
+          </div>
+        ))}
       </div>
     </AppShell>
   );
