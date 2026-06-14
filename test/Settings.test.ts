@@ -81,10 +81,14 @@ describe('Settings', () => {
   });
 
   describe('releaseFilter', () => {
-    it('defaults to Album/Single/EP and excluding no secondary types', () => {
+    it('defaults to Album only, excluding Remix/Live/Compilation', () => {
       const {releaseFilter} = Settings.load();
-      expect(releaseFilter.primaryTypes).toEqual(['Album', 'Single', 'EP']);
-      expect(releaseFilter.excludeSecondaryTypes).toEqual([]);
+      expect(releaseFilter.primaryTypes).toEqual(['Album']);
+      expect(releaseFilter.excludeSecondaryTypes).toEqual([
+        'Remix',
+        'Live',
+        'Compilation',
+      ]);
     });
 
     it('replaces the type lists when saved (arrays are not merged)', () => {

@@ -68,10 +68,10 @@ const DEFAULT_SETTINGS: SettingsInput = {
     contact: '',
   },
   releaseFilter: {
-    // Keep proper releases by default; Broadcast and Other are excluded.
-    primaryTypes: ['Album', 'Single', 'EP'],
-    // Exclude nothing by secondary type by default.
-    excludeSecondaryTypes: [],
+    // Default to full studio albums only.
+    primaryTypes: ['Album'],
+    // Drop the common "album" variants that aren't new studio releases.
+    excludeSecondaryTypes: ['Remix', 'Live', 'Compilation'],
   },
 };
 
