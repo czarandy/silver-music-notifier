@@ -1,4 +1,5 @@
-import {useEffect, useState} from 'react';
+import {useEffect, useRef, useState} from 'react';
+import {useMutation, useQuery, useQueryClient} from '@tanstack/react-query';
 import {
   Button,
   CheckboxInput,
@@ -21,13 +22,45 @@ import {
 
 export function SettingsPanel() {
   const showToast = useToast();
+  const queryClient = useQueryClient();
+  const settingsQuery = useQuery({
+    queryKey: ['settings'],
+    queryFn: api.getSettings,
+  });
   const [settings, setSettings] = useState<Settings | null>(null);
-  const [saving, setSaving] = useState(false);
-  const [testing, setTesting] = useState(false);
+  // JSON of the last value persisted to the server, so we can skip no-op saves
+  // (e.g. blurring a text field that wasn't edited).
+  const savedRef = useRef<string>('');
+  const saveMutation = useMutation({
+    mutationFn: api.saveSettings,
+    onSuccess: saved => {
+      queryClient.setQueryData(['settings'], saved);
+      savedRef.current = JSON.stringify(saved);
+      setSettings(saved);
+      showToast({type: 'success', body: 'Settings saved.'});
+    },
+    onError: err => {
+      showToast({type: 'error', body: errMsg(err)});
+    },
+  });
+  const testEmailMutation = useMutation({
+    mutationFn: api.testEmail,
+    onSuccess: () => {
+      showToast({type: 'success', body: 'Test email sent.'});
+    },
+    onError: err => {
+      showToast({type: 'error', body: errMsg(err)});
+    },
+  });
 
   useEffect(() => {
-    api.getSettings().then(setSettings);
-  }, []);
+    if (!settingsQuery.data) {
+      return;
+    }
+    const serialized = JSON.stringify(settingsQuery.data);
+    setSettings(settingsQuery.data);
+    savedRef.current = serialized;
+  }, [settingsQuery.data]);
 
   if (!settings) {
     return <Spinner label="Loading settings…" />;
@@ -37,73 +70,65 @@ export function SettingsPanel() {
     settings.smtp.host && settings.smtp.user && settings.smtp.to,
   );
 
-  function patchNotify(p: Partial<Settings['notify']>) {
-    setSettings(s => (s ? {...s, notify: {...s.notify, ...p}} : s));
-  }
-  function patchSmtp(p: Partial<Settings['smtp']>) {
-    setSettings(s => (s ? {...s, smtp: {...s.smtp, ...p}} : s));
-  }
-  function togglePrimaryType(type: ReleaseGroupPrimaryType, enabled: boolean) {
-    setSettings(s => {
-      if (!s) {
-        return s;
-      }
-      const current = s.releaseFilter.primaryTypes;
-      const primaryTypes = enabled
-        ? RELEASE_GROUP_PRIMARY_TYPES.filter(
-            t => current.includes(t) || t === type,
-          )
-        : current.filter(t => t !== type);
-      return {...s, releaseFilter: {...s.releaseFilter, primaryTypes}};
+  // Persist a settings object if it differs from what's already saved. Defined
+  // as const arrows so TypeScript keeps `settings` narrowed to non-null inside.
+  const persist = (next: Settings) => {
+    if (JSON.stringify(next) === savedRef.current) {
+      return;
+    }
+    saveMutation.mutate(next);
+  };
+
+  // Discrete controls (switches, checkboxes): update locally and save right away.
+  const commit = (next: Settings) => {
+    setSettings(next);
+    persist(next);
+  };
+  // Text fields: edit locally; the save happens on blur via commitCurrent.
+  const editSmtp = (p: Partial<Settings['smtp']>) => {
+    setSettings({...settings, smtp: {...settings.smtp, ...p}});
+  };
+  const commitCurrent = () => {
+    persist(settings);
+  };
+
+  const setNotify = (p: Partial<Settings['notify']>) => {
+    commit({...settings, notify: {...settings.notify, ...p}});
+  };
+  const togglePrimaryType = (
+    type: ReleaseGroupPrimaryType,
+    enabled: boolean,
+  ) => {
+    const current = settings.releaseFilter.primaryTypes;
+    const primaryTypes = enabled
+      ? RELEASE_GROUP_PRIMARY_TYPES.filter(
+          t => current.includes(t) || t === type,
+        )
+      : current.filter(t => t !== type);
+    commit({
+      ...settings,
+      releaseFilter: {...settings.releaseFilter, primaryTypes},
     });
-  }
-  function toggleExcludeSecondaryType(
+  };
+  const toggleExcludeSecondaryType = (
     type: ReleaseGroupSecondaryType,
     excluded: boolean,
-  ) {
-    setSettings(s => {
-      if (!s) {
-        return s;
-      }
-      const current = s.releaseFilter.excludeSecondaryTypes;
-      const excludeSecondaryTypes = excluded
-        ? RELEASE_GROUP_SECONDARY_TYPES.filter(
-            t => current.includes(t) || t === type,
-          )
-        : current.filter(t => t !== type);
-      return {...s, releaseFilter: {...s.releaseFilter, excludeSecondaryTypes}};
+  ) => {
+    const current = settings.releaseFilter.excludeSecondaryTypes;
+    const excludeSecondaryTypes = excluded
+      ? RELEASE_GROUP_SECONDARY_TYPES.filter(
+          t => current.includes(t) || t === type,
+        )
+      : current.filter(t => t !== type);
+    commit({
+      ...settings,
+      releaseFilter: {...settings.releaseFilter, excludeSecondaryTypes},
     });
-  }
+  };
 
-  async function save() {
-    if (!settings) {
-      return;
-    }
-    setSaving(true);
-    try {
-      setSettings(await api.saveSettings(settings));
-      showToast({type: 'success', body: 'Settings saved.'});
-    } catch (err) {
-      showToast({type: 'error', body: errMsg(err)});
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  async function testEmail() {
-    if (!settings) {
-      return;
-    }
-    setTesting(true);
-    try {
-      await api.testEmail(settings);
-      showToast({type: 'success', body: 'Test email sent.'});
-    } catch (err) {
-      showToast({type: 'error', body: errMsg(err)});
-    } finally {
-      setTesting(false);
-    }
-  }
+  const testEmail = () => {
+    testEmailMutation.mutate(settings);
+  };
 
   return (
     <div
@@ -118,12 +143,12 @@ export function SettingsPanel() {
         <Switch
           label="In-page “New” badges"
           isSelected={settings.notify.inPage}
-          onChange={v => patchNotify({inPage: v})}
+          onChange={v => setNotify({inPage: v})}
         />
         <Switch
           label="Desktop notifications"
           isSelected={settings.notify.desktop}
-          onChange={v => patchNotify({desktop: v})}
+          onChange={v => setNotify({desktop: v})}
         />
         <Switch
           label="Email notifications"
@@ -132,7 +157,7 @@ export function SettingsPanel() {
           }
           isSelected={settings.notify.email}
           isDisabled={!smtpReady}
-          onChange={v => patchNotify({email: v})}
+          onChange={v => setNotify({email: v})}
         />
       </section>
 
@@ -152,8 +177,7 @@ export function SettingsPanel() {
         ))}
 
         <Text color="secondary">
-          Exclude releases with any of these secondary types. None excluded by
-          default.
+          Exclude releases with any of these secondary types.
         </Text>
         {RELEASE_GROUP_SECONDARY_TYPES.map(type => (
           <CheckboxInput
@@ -173,13 +197,15 @@ export function SettingsPanel() {
         <TextInput
           label="SMTP host"
           value={settings.smtp.host}
-          onChange={v => patchSmtp({host: v})}
+          onChange={v => editSmtp({host: v})}
+          onBlur={commitCurrent}
           placeholder="smtp.example.com"
         />
         <NumberInput
           label="Port"
           value={settings.smtp.port}
-          onChange={v => patchSmtp({port: v ?? 587})}
+          onChange={v => editSmtp({port: v ?? 587})}
+          onBlur={commitCurrent}
           min={1}
           max={65535}
           isIntegerOnly
@@ -187,31 +213,46 @@ export function SettingsPanel() {
         <Switch
           label="Use TLS (secure)"
           isSelected={settings.smtp.secure}
-          onChange={v => patchSmtp({secure: v})}
+          onChange={v =>
+            commit({...settings, smtp: {...settings.smtp, secure: v}})
+          }
         />
         <TextInput
           label="Username"
           value={settings.smtp.user}
-          onChange={v => patchSmtp({user: v})}
+          onChange={v => editSmtp({user: v})}
+          onBlur={commitCurrent}
           autoComplete="off"
         />
         <PasswordInput
           label="Password"
           value={settings.smtp.pass}
-          onChange={v => patchSmtp({pass: v})}
+          onChange={v => editSmtp({pass: v})}
+          onBlur={commitCurrent}
         />
         <TextInput
           label="From address"
           value={settings.smtp.from}
-          onChange={v => patchSmtp({from: v})}
+          onChange={v => editSmtp({from: v})}
+          onBlur={commitCurrent}
           placeholder="notifier@example.com"
         />
         <TextInput
           label="Send notifications to"
           value={settings.smtp.to}
-          onChange={v => patchSmtp({to: v})}
+          onChange={v => editSmtp({to: v})}
+          onBlur={commitCurrent}
           placeholder="you@example.com"
         />
+        <div>
+          <Button
+            label="Send test email"
+            variant="secondary"
+            isLoading={testEmailMutation.isPending}
+            isDisabled={!smtpReady}
+            onClick={testEmail}
+          />
+        </div>
       </section>
 
       <section style={{display: 'flex', flexDirection: 'column', gap: 12}}>
@@ -223,24 +264,9 @@ export function SettingsPanel() {
           onChange={v =>
             setSettings(s => (s ? {...s, musicbrainz: {contact: v}} : s))
           }
+          onBlur={commitCurrent}
         />
       </section>
-
-      <div style={{display: 'flex', gap: 8}}>
-        <Button
-          label="Save settings"
-          variant="primary"
-          isLoading={saving}
-          onClick={save}
-        />
-        <Button
-          label="Send test email"
-          variant="secondary"
-          isLoading={testing}
-          isDisabled={!smtpReady}
-          onClick={testEmail}
-        />
-      </div>
     </div>
   );
 }

@@ -84,6 +84,15 @@ export function createApp() {
     res.json(Release.list({onlyNew, limit}));
   });
 
+  api.post('/releases/:mbid/dismiss', (req, res) => {
+    const dismissed = Release.dismiss(req.params.mbid);
+    if (!dismissed) {
+      res.status(404).json({error: 'release not found'});
+      return;
+    }
+    res.json({dismissed});
+  });
+
   api.post(
     '/refresh',
     asyncRoute(async (_req, res) => {

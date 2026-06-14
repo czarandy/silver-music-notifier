@@ -15,7 +15,9 @@ export default defineConfig({
   server: {
     port: 5173,
     proxy: {
-      '/api': 'http://localhost:3001',
+      // Match the /api/ namespace precisely — a bare `/api` prefix also catches
+      // the client module served at /api.ts and breaks its dev transform.
+      '^/api/': {target: 'http://localhost:3001', changeOrigin: true},
     },
   },
 });

@@ -55,5 +55,21 @@ export class AppDb {
         value TEXT NOT NULL
       );
     `);
+    this.ensureColumn('release_groups', 'dismissed_at', 'TEXT');
+  }
+
+  private ensureColumn(
+    table: string,
+    column: string,
+    definition: string,
+  ): void {
+    const columns = this.connection
+      .prepare(`PRAGMA table_info(${table})`)
+      .all() as Array<{name: string}>;
+    if (!columns.some(c => c.name === column)) {
+      this.connection.exec(
+        `ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`,
+      );
+    }
   }
 }

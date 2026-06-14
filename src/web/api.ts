@@ -92,6 +92,10 @@ export const api = {
       method: 'DELETE',
     }),
   listReleases: () => req<Release[]>('/releases'),
+  dismissRelease: (mbid: string) =>
+    req<{dismissed: boolean}>(`/releases/${encodeURIComponent(mbid)}/dismiss`, {
+      method: 'POST',
+    }),
   refresh: () => req<RefreshSummary>('/refresh', {method: 'POST'}),
   getSettings: () => req<Settings>('/settings'),
   saveSettings: (s: Partial<Settings>) =>

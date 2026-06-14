@@ -26,6 +26,7 @@ export class Release {
     secondaryTypes: string | null;
     firstReleaseDate: string | null;
     firstSeenAt: string;
+    dismissedAt: string | null;
     lastRefresh: string | null;
   }) {
     this.mbid = input.mbid;
@@ -37,7 +38,9 @@ export class Release {
     this.firstReleaseDate = input.firstReleaseDate;
     this.firstSeenAt = input.firstSeenAt;
     this.isNew =
-      input.lastRefresh != null && input.firstSeenAt >= input.lastRefresh;
+      input.dismissedAt == null &&
+      input.lastRefresh != null &&
+      input.firstSeenAt >= input.lastRefresh;
   }
 
   static list(opts: ReleaseListOptions = {}): Release[] {
@@ -46,7 +49,7 @@ export class Release {
       .prepare(
         `SELECT rg.mbid, rg.artist_mbid, a.name AS artist_name, rg.title,
                 rg.primary_type, rg.secondary_types, rg.first_release_date,
-                rg.first_seen_at
+                rg.first_seen_at, rg.dismissed_at
          FROM release_groups rg
          JOIN artists a ON a.mbid = rg.artist_mbid
          ORDER BY (rg.first_release_date IS NULL), rg.first_release_date DESC, rg.title`,
@@ -60,6 +63,7 @@ export class Release {
       secondary_types: string | null;
       first_release_date: string | null;
       first_seen_at: string;
+      dismissed_at: string | null;
     }>;
 
     // A release is "new" if it was first seen at or after the previous refresh
@@ -75,10 +79,18 @@ export class Release {
           secondaryTypes: row.secondary_types,
           firstReleaseDate: row.first_release_date,
           firstSeenAt: row.first_seen_at,
+          dismissedAt: row.dismissed_at,
           lastRefresh,
         }),
     );
     const filtered = opts.onlyNew ? items.filter(i => i.isNew) : items;
     return opts.limit ? filtered.slice(0, opts.limit) : filtered;
+  }
+
+  static dismiss(mbid: string): boolean {
+    const res = AppDb.getDefault()
+      .prepare('UPDATE release_groups SET dismissed_at = ? WHERE mbid = ?')
+      .run(new Date().toISOString(), mbid);
+    return res.changes > 0;
   }
 }

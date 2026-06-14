@@ -89,6 +89,9 @@ describe('Release', () => {
         isNew: true,
       },
     ]);
+    expect(Release.dismiss('release-new')).toBe(true);
+    expect(Release.list({onlyNew: true})).toEqual([]);
+    expect(Release.dismiss('missing')).toBe(false);
     expect(Release.list({limit: 1}).map(r => r.mbid)).toEqual(['release-new']);
   });
 });

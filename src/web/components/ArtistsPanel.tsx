@@ -1,4 +1,6 @@
-import {useEffect, useRef, useState} from 'react';
+import {useCallback, useEffect, useMemo, useRef, useState} from 'react';
+import {useMutation, useQuery, useQueryClient} from '@tanstack/react-query';
+import {X} from 'lucide-react';
 import {
   Button,
   EmptyState,
@@ -14,21 +16,56 @@ import {api, type Artist, type ArtistSearchResult} from '../api.js';
 
 export function ArtistsPanel() {
   const showToast = useToast();
-  const [artists, setArtists] = useState<Artist[]>([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
   const [query, setQuery] = useState('');
-  const [results, setResults] = useState<ArtistSearchResult[]>([]);
-  const [searching, setSearching] = useState(false);
+  const [debouncedQuery, setDebouncedQuery] = useState('');
   const debounce = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  async function reload() {
-    setArtists(await api.listArtists());
-    setLoading(false);
-  }
-
-  useEffect(() => {
-    reload();
-  }, []);
+  const artistsQuery = useQuery({
+    queryKey: ['artists'],
+    queryFn: api.listArtists,
+  });
+  const searchQuery = useQuery({
+    queryKey: ['artistSearch', debouncedQuery],
+    queryFn: () => api.searchArtists(debouncedQuery),
+    enabled: debouncedQuery.length >= 2,
+  });
+  const addMutation = useMutation({
+    mutationFn: api.addArtist,
+    onSuccess: async ({added}, artist) => {
+      showToast({
+        type: added ? 'success' : 'info',
+        body: added
+          ? `Added ${artist.name}.`
+          : `${artist.name} is already tracked.`,
+      });
+      setQuery('');
+      setDebouncedQuery('');
+      await queryClient.invalidateQueries({queryKey: ['artists']});
+    },
+    onError: err => {
+      showToast({type: 'error', body: errMsg(err)});
+    },
+  });
+  const removeMutation = useMutation({
+    mutationFn: api.removeArtist,
+    onSuccess: async (_removed, mbid) => {
+      const artist = artists.find(a => a.mbid === mbid);
+      showToast({
+        type: 'success',
+        body: artist ? `Removed ${artist.name}.` : 'Removed artist.',
+      });
+      await Promise.all([
+        queryClient.invalidateQueries({queryKey: ['artists']}),
+        queryClient.invalidateQueries({queryKey: ['releases']}),
+      ]);
+    },
+    onError: err => {
+      showToast({type: 'error', body: errMsg(err)});
+    },
+  });
+  const artists = artistsQuery.data ?? [];
+  const results: ArtistSearchResult[] =
+    debouncedQuery.length >= 2 ? (searchQuery.data ?? []) : [];
 
   useEffect(() => {
     if (debounce.current) {
@@ -36,83 +73,71 @@ export function ArtistsPanel() {
     }
     const q = query.trim();
     if (q.length < 2) {
-      setResults([]);
+      setDebouncedQuery('');
       return;
     }
-    debounce.current = setTimeout(async () => {
-      setSearching(true);
-      try {
-        setResults(await api.searchArtists(q));
-      } catch (err) {
-        showToast({type: 'error', body: errMsg(err)});
-      } finally {
-        setSearching(false);
-      }
-    }, 350);
+    debounce.current = setTimeout(() => setDebouncedQuery(q), 350);
     return () => {
       if (debounce.current) {
         clearTimeout(debounce.current);
       }
     };
-  }, [query, showToast]);
+  }, [query]);
 
-  async function add(r: ArtistSearchResult) {
-    try {
-      const {added} = await api.addArtist({
-        mbid: r.mbid,
-        name: r.name,
-        sortName: r.sortName,
-        disambiguation: r.disambiguation,
-      });
-      showToast({
-        type: added ? 'success' : 'info',
-        body: added ? `Added ${r.name}.` : `${r.name} is already tracked.`,
-      });
-      setQuery('');
-      setResults([]);
-      await reload();
-    } catch (err) {
-      showToast({type: 'error', body: errMsg(err)});
+  useEffect(() => {
+    if (searchQuery.error) {
+      showToast({type: 'error', body: errMsg(searchQuery.error)});
     }
+  }, [searchQuery.error, showToast]);
+
+  function add(r: ArtistSearchResult) {
+    addMutation.mutate({
+      mbid: r.mbid,
+      name: r.name,
+      sortName: r.sortName,
+      disambiguation: r.disambiguation,
+    });
   }
 
-  async function remove(a: Artist) {
-    try {
-      await api.removeArtist(a.mbid);
-      showToast({type: 'success', body: `Removed ${a.name}.`});
-      await reload();
-    } catch (err) {
-      showToast({type: 'error', body: errMsg(err)});
-    }
-  }
+  const remove = useCallback(
+    (a: Artist) => {
+      removeMutation.mutate(a.mbid);
+    },
+    [removeMutation],
+  );
 
-  const columns: TableColumn<Artist>[] = [
-    {
-      key: 'name',
-      header: 'Artist',
-      renderCell: a => (
-        <span>
-          {a.name}
-          {a.disambiguation ? (
-            <Text color="secondary"> — {a.disambiguation}</Text>
-          ) : null}
-        </span>
-      ),
-    },
-    {
-      key: 'actions',
-      header: '',
-      align: 'end',
-      renderCell: a => (
-        <Button
-          label="Remove"
-          variant="ghost"
-          size="sm"
-          onClick={() => remove(a)}
-        />
-      ),
-    },
-  ];
+  const columns = useMemo<TableColumn<Artist>[]>(
+    () => [
+      {
+        key: 'name',
+        header: 'Artist',
+        renderCell: a => (
+          <span>
+            {a.name}
+            {a.disambiguation ? (
+              <Text color="secondary"> — {a.disambiguation}</Text>
+            ) : null}
+          </span>
+        ),
+      },
+      {
+        key: 'actions',
+        header: '',
+        align: 'end',
+        renderCell: a => (
+          <Button
+            label="Remove"
+            icon={X}
+            isIconOnly
+            variant="ghost"
+            size="sm"
+            onClick={() => remove(a)}
+          />
+        ),
+      },
+    ],
+    [remove],
+  );
 
   return (
     <div style={{display: 'flex', flexDirection: 'column', gap: 24}}>
@@ -122,7 +147,7 @@ export function ArtistsPanel() {
           placeholder="Search MusicBrainz by name…"
           value={query}
           onChange={v => setQuery(v)}
-          isLoading={searching}
+          isLoading={searchQuery.isFetching}
           hasClear
         />
         {results.length > 0 && (
@@ -171,7 +196,7 @@ export function ArtistsPanel() {
       </section>
 
       <section>
-        {loading ? (
+        {artistsQuery.isLoading ? (
           <Spinner label="Loading artists…" />
         ) : artists.length === 0 ? (
           <EmptyState

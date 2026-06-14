@@ -1,5 +1,5 @@
 import {useState} from 'react';
-import {Button, Heading, Text} from 'silver-ui';
+import {Heading, Tab, Tabs, Text} from 'silver-ui';
 import {ArtistsPanel} from './components/ArtistsPanel.js';
 import {ReleasesFeed} from './components/ReleasesFeed.js';
 import {SettingsPanel} from './components/SettingsPanel.js';
@@ -22,18 +22,27 @@ export function App() {
         <Text color="secondary">New releases from the artists you follow.</Text>
       </header>
 
-      <nav style={{display: 'flex', gap: 8, margin: '16px 0 24px'}}>
+      <Tabs
+        label="Sections"
+        value={view}
+        onChange={value => setView(value as View)}
+        hasDivider
+        style={{margin: '16px 0 24px'}}>
         {NAV.map(n => (
-          <Button
+          <Tab
             key={n.id}
+            id={`${n.id}-tab`}
+            controls={`${n.id}-panel`}
             label={n.label}
-            variant={view === n.id ? 'primary' : 'ghost'}
-            onClick={() => setView(n.id)}
+            value={n.id}
           />
         ))}
-      </nav>
+      </Tabs>
 
-      <main>
+      <main
+        id={`${view}-panel`}
+        role="tabpanel"
+        aria-labelledby={`${view}-tab`}>
         {view === 'releases' && <ReleasesFeed />}
         {view === 'artists' && <ArtistsPanel />}
         {view === 'settings' && <SettingsPanel />}

@@ -5,6 +5,7 @@ import {registerAdd} from './commands/add.js';
 import {registerRemove} from './commands/remove.js';
 import {registerRefresh} from './commands/refresh.js';
 import {registerReleases} from './commands/releases.js';
+import {registerDismiss} from './commands/dismiss.js';
 import {registerConfig} from './commands/config.js';
 import {registerClearData} from './commands/clearData.js';
 import {ensureMbContact} from './ensureContact.js';
@@ -13,7 +14,7 @@ const program = new Command();
 
 // Commands that don't hit the MusicBrainz API and must work before a contact is
 // configured (e.g. `config` to set it, `clear-data` to wipe local state).
-const CONTACT_EXEMPT_COMMANDS = new Set(['config', 'clear-data']);
+const CONTACT_EXEMPT_COMMANDS = new Set(['config', 'clear-data', 'dismiss']);
 
 // A configured MusicBrainz contact is required. Ensure it once at the root
 // (prompting interactively on first use) rather than in each command.
@@ -39,6 +40,7 @@ registerAdd(program);
 registerRemove(program);
 registerRefresh(program);
 registerReleases(program);
+registerDismiss(program);
 registerConfig(program);
 registerClearData(program);
 
