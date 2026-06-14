@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import {useEffect, useRef, useState} from 'react';
 import {
   Button,
   EmptyState,
@@ -9,14 +9,14 @@ import {
   TextInput,
   useToast,
   type TableColumn,
-} from "silver-ui";
-import { api, type Artist, type ArtistSearchResult } from "../api.js";
+} from 'silver-ui';
+import {api, type Artist, type ArtistSearchResult} from '../api.js';
 
 export function ArtistsPanel() {
   const showToast = useToast();
   const [artists, setArtists] = useState<Artist[]>([]);
   const [loading, setLoading] = useState(true);
-  const [query, setQuery] = useState("");
+  const [query, setQuery] = useState('');
   const [results, setResults] = useState<ArtistSearchResult[]>([]);
   const [searching, setSearching] = useState(false);
   const debounce = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -42,7 +42,7 @@ export function ArtistsPanel() {
       try {
         setResults(await api.searchArtists(q));
       } catch (err) {
-        showToast({ type: "error", body: errMsg(err) });
+        showToast({type: 'error', body: errMsg(err)});
       } finally {
         setSearching(false);
       }
@@ -54,39 +54,39 @@ export function ArtistsPanel() {
 
   async function add(r: ArtistSearchResult) {
     try {
-      const { added } = await api.addArtist({
+      const {added} = await api.addArtist({
         mbid: r.mbid,
         name: r.name,
         sortName: r.sortName,
         disambiguation: r.disambiguation,
       });
       showToast({
-        type: added ? "success" : "info",
+        type: added ? 'success' : 'info',
         body: added ? `Added ${r.name}.` : `${r.name} is already tracked.`,
       });
-      setQuery("");
+      setQuery('');
       setResults([]);
       await reload();
     } catch (err) {
-      showToast({ type: "error", body: errMsg(err) });
+      showToast({type: 'error', body: errMsg(err)});
     }
   }
 
   async function remove(a: Artist) {
     try {
       await api.removeArtist(a.mbid);
-      showToast({ type: "success", body: `Removed ${a.name}.` });
+      showToast({type: 'success', body: `Removed ${a.name}.`});
       await reload();
     } catch (err) {
-      showToast({ type: "error", body: errMsg(err) });
+      showToast({type: 'error', body: errMsg(err)});
     }
   }
 
   const columns: TableColumn<Artist>[] = [
     {
-      key: "name",
-      header: "Artist",
-      renderCell: (a) => (
+      key: 'name',
+      header: 'Artist',
+      renderCell: a => (
         <span>
           {a.name}
           {a.disambiguation ? (
@@ -96,10 +96,10 @@ export function ArtistsPanel() {
       ),
     },
     {
-      key: "actions",
-      header: "",
-      align: "end",
-      renderCell: (a) => (
+      key: 'actions',
+      header: '',
+      align: 'end',
+      renderCell: a => (
         <Button
           label="Remove"
           variant="ghost"
@@ -111,13 +111,13 @@ export function ArtistsPanel() {
   ];
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+    <div style={{display: 'flex', flexDirection: 'column', gap: 24}}>
       <section>
         <TextInput
           label="Add an artist"
           placeholder="Search MusicBrainz by name…"
           value={query}
-          onChange={(v) => setQuery(v)}
+          onChange={v => setQuery(v)}
           isLoading={searching}
           hasClear
         />
@@ -125,38 +125,40 @@ export function ArtistsPanel() {
           <div
             style={{
               marginTop: 8,
-              border: "1px solid var(--silver-color-border, #ddd)",
+              border: '1px solid var(--silver-color-border, #ddd)',
               borderRadius: 8,
-              overflow: "hidden",
-            }}
-          >
-            {results.map((r) => (
+              overflow: 'hidden',
+            }}>
+            {results.map(r => (
               <button
                 key={r.mbid}
                 onClick={() => add(r)}
                 style={{
-                  display: "flex",
-                  width: "100%",
-                  justifyContent: "space-between",
-                  alignItems: "center",
+                  display: 'flex',
+                  width: '100%',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
                   gap: 8,
-                  padding: "8px 12px",
-                  background: "none",
-                  border: "none",
-                  borderBottom: "1px solid var(--silver-color-border, #eee)",
-                  cursor: "pointer",
-                  textAlign: "left",
-                }}
-              >
+                  padding: '8px 12px',
+                  background: 'none',
+                  border: 'none',
+                  borderBottom: '1px solid var(--silver-color-border, #eee)',
+                  cursor: 'pointer',
+                  textAlign: 'left',
+                }}>
                 <span>
                   <strong>{r.name}</strong>
                   {r.disambiguation ? (
                     <Text color="secondary"> — {r.disambiguation}</Text>
                   ) : null}
                 </span>
-                <span style={{ display: "flex", gap: 6 }}>
-                  {r.type ? <Tag label={r.type} color="gray" size="sm" /> : null}
-                  {r.country ? <Tag label={r.country} color="blue" size="sm" /> : null}
+                <span style={{display: 'flex', gap: 6}}>
+                  {r.type ? (
+                    <Tag label={r.type} color="gray" size="sm" />
+                  ) : null}
+                  {r.country ? (
+                    <Tag label={r.country} color="blue" size="sm" />
+                  ) : null}
                 </span>
               </button>
             ))}

@@ -1,21 +1,24 @@
-import { MusicBrainzApi } from "musicbrainz-api";
-import { mbContact } from "./settings.js";
+import {MusicBrainzApi} from 'musicbrainz-api';
+import {mbContact} from './settings.js';
 
 // App version is informational for the MusicBrainz User-Agent.
-const APP_VERSION = "0.1.0";
+const APP_VERSION = '0.1.0';
 
 let client: MusicBrainzApi | null = null;
 
 function api(): MusicBrainzApi {
   // Recreate if the contact changed; cheap enough and keeps the User-Agent honest.
   const contact = mbContact();
-  if (!client || (client as unknown as { _contact?: string })._contact !== contact) {
+  if (
+    !client ||
+    (client as unknown as {_contact?: string})._contact !== contact
+  ) {
     client = new MusicBrainzApi({
-      appName: "silver-music-notifier",
+      appName: 'silver-music-notifier',
       appVersion: APP_VERSION,
       appContactInfo: contact,
     });
-    (client as unknown as { _contact?: string })._contact = contact;
+    (client as unknown as {_contact?: string})._contact = contact;
   }
   return client;
 }
@@ -29,12 +32,14 @@ export interface ArtistSearchResult {
   type?: string;
 }
 
-export async function searchArtist(query: string): Promise<ArtistSearchResult[]> {
-  const result = await api().search("artist", { query, limit: 10 });
-  return (result.artists ?? []).map((a) => ({
+export async function searchArtist(
+  query: string,
+): Promise<ArtistSearchResult[]> {
+  const result = await api().search('artist', {query, limit: 10});
+  return (result.artists ?? []).map(a => ({
     mbid: a.id,
     name: a.name,
-    sortName: a["sort-name"],
+    sortName: a['sort-name'],
     disambiguation: a.disambiguation,
     country: a.country,
     type: a.type,
@@ -58,22 +63,22 @@ export async function fetchReleaseGroups(
   const limit = 100;
   let offset = 0;
   for (;;) {
-    const res = await api().browse("release-group", {
+    const res = await api().browse('release-group', {
       artist: artistMbid,
       limit,
       offset,
     });
-    const groups = res["release-groups"] ?? [];
+    const groups = res['release-groups'] ?? [];
     for (const g of groups) {
       out.push({
         mbid: g.id,
         title: g.title,
-        primaryType: g["primary-type"] ?? null,
-        secondaryTypes: g["secondary-types"] ?? [],
-        firstReleaseDate: g["first-release-date"] || null,
+        primaryType: g['primary-type'] ?? null,
+        secondaryTypes: g['secondary-types'] ?? [],
+        firstReleaseDate: g['first-release-date'] || null,
       });
     }
-    const total = res["release-group-count"] ?? out.length;
+    const total = res['release-group-count'] ?? out.length;
     offset += groups.length;
     if (groups.length === 0 || offset >= total) break;
   }

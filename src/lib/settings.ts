@@ -1,4 +1,4 @@
-import { getDb } from "./db.js";
+import {getDb} from './db.js';
 
 export interface SmtpSettings {
   host: string;
@@ -29,34 +29,34 @@ export const DEFAULT_SETTINGS: Settings = {
     email: false,
   },
   smtp: {
-    host: "",
+    host: '',
     port: 587,
     secure: false,
-    user: "",
-    pass: "",
-    from: "",
-    to: "",
+    user: '',
+    pass: '',
+    from: '',
+    to: '',
   },
   musicbrainz: {
-    contact: "",
+    contact: '',
   },
 };
 
-const CONFIG_KEY = "config";
-const LAST_REFRESH_KEY = "last_refresh_at";
+const CONFIG_KEY = 'config';
+const LAST_REFRESH_KEY = 'last_refresh_at';
 
 function readRaw(key: string): string | undefined {
   const row = getDb()
-    .prepare("SELECT value FROM settings WHERE key = ?")
-    .get(key) as { value: string } | undefined;
+    .prepare('SELECT value FROM settings WHERE key = ?')
+    .get(key) as {value: string} | undefined;
   return row?.value;
 }
 
 function writeRaw(key: string, value: string): void {
   getDb()
     .prepare(
-      "INSERT INTO settings (key, value) VALUES (?, ?) " +
-        "ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+      'INSERT INTO settings (key, value) VALUES (?, ?) ' +
+        'ON CONFLICT(key) DO UPDATE SET value = excluded.value',
     )
     .run(key, value);
 }
@@ -73,18 +73,18 @@ export function getSettings(): Settings {
     return structuredClone(DEFAULT_SETTINGS);
   }
   return {
-    notify: { ...DEFAULT_SETTINGS.notify, ...parsed.notify },
-    smtp: { ...DEFAULT_SETTINGS.smtp, ...parsed.smtp },
-    musicbrainz: { ...DEFAULT_SETTINGS.musicbrainz, ...parsed.musicbrainz },
+    notify: {...DEFAULT_SETTINGS.notify, ...parsed.notify},
+    smtp: {...DEFAULT_SETTINGS.smtp, ...parsed.smtp},
+    musicbrainz: {...DEFAULT_SETTINGS.musicbrainz, ...parsed.musicbrainz},
   };
 }
 
 export function saveSettings(patch: Partial<Settings>): Settings {
   const current = getSettings();
   const next: Settings = {
-    notify: { ...current.notify, ...patch.notify },
-    smtp: { ...current.smtp, ...patch.smtp },
-    musicbrainz: { ...current.musicbrainz, ...patch.musicbrainz },
+    notify: {...current.notify, ...patch.notify},
+    smtp: {...current.smtp, ...patch.smtp},
+    musicbrainz: {...current.musicbrainz, ...patch.musicbrainz},
   };
   writeRaw(CONFIG_KEY, JSON.stringify(next));
   return next;
@@ -109,6 +109,6 @@ export function mbContact(): string {
   return (
     s.musicbrainz.contact ||
     process.env.SMN_MB_CONTACT ||
-    "silver-music-notifier (no contact configured)"
+    'silver-music-notifier (no contact configured)'
   );
 }

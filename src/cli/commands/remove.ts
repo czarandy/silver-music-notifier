@@ -1,12 +1,12 @@
-import type { Command } from "commander";
-import { removeArtist } from "../../lib/store.js";
+import type {Command} from 'commander';
+import {removeArtist} from '../../lib/store.js';
 
 export function registerRemove(program: Command): void {
   program
-    .command("remove")
-    .alias("rm")
-    .description("Stop tracking an artist (by MBID or name)")
-    .argument("<idOrName>", "MusicBrainz MBID or exact artist name")
+    .command('remove')
+    .alias('rm')
+    .description('Stop tracking an artist (by MBID or name)')
+    .argument('<idOrName>', 'MusicBrainz MBID or exact artist name')
     .action((idOrName: string) => {
       const removed = removeArtist(idOrName);
       if (!removed) {

@@ -1,5 +1,5 @@
-import { getDb, type ArtistRow } from "./db.js";
-import { getLastRefreshAt } from "./settings.js";
+import {getDb, type ArtistRow} from './db.js';
+import {getLastRefreshAt} from './settings.js';
 
 export interface ReleaseListItem {
   mbid: string;
@@ -22,12 +22,12 @@ export interface NewArtistInput {
 
 export function listArtists(): ArtistRow[] {
   return getDb()
-    .prepare("SELECT * FROM artists ORDER BY name COLLATE NOCASE")
+    .prepare('SELECT * FROM artists ORDER BY name COLLATE NOCASE')
     .all() as ArtistRow[];
 }
 
 export function getArtist(mbid: string): ArtistRow | undefined {
-  return getDb().prepare("SELECT * FROM artists WHERE mbid = ?").get(mbid) as
+  return getDb().prepare('SELECT * FROM artists WHERE mbid = ?').get(mbid) as
     | ArtistRow
     | undefined;
 }
@@ -55,18 +55,20 @@ export function addArtist(input: NewArtistInput): boolean {
 export function removeArtist(idOrName: string): ArtistRow | undefined {
   const db = getDb();
   const found =
-    (db.prepare("SELECT * FROM artists WHERE mbid = ?").get(idOrName) as
+    (db.prepare('SELECT * FROM artists WHERE mbid = ?').get(idOrName) as
       | ArtistRow
       | undefined) ??
     (db
-      .prepare("SELECT * FROM artists WHERE name = ? COLLATE NOCASE")
+      .prepare('SELECT * FROM artists WHERE name = ? COLLATE NOCASE')
       .get(idOrName) as ArtistRow | undefined);
   if (!found) return undefined;
-  db.prepare("DELETE FROM artists WHERE mbid = ?").run(found.mbid);
+  db.prepare('DELETE FROM artists WHERE mbid = ?').run(found.mbid);
   return found;
 }
 
-export function listReleases(opts: { onlyNew?: boolean; limit?: number } = {}): ReleaseListItem[] {
+export function listReleases(
+  opts: {onlyNew?: boolean; limit?: number} = {},
+): ReleaseListItem[] {
   const lastRefresh = getLastRefreshAt();
   const rows = getDb()
     .prepare(
@@ -90,7 +92,7 @@ export function listReleases(opts: { onlyNew?: boolean; limit?: number } = {}): 
 
   // A release is "new" if it was first seen at or after the previous refresh
   // started — i.e. it showed up in the most recent refresh.
-  const items: ReleaseListItem[] = rows.map((r) => ({
+  const items: ReleaseListItem[] = rows.map(r => ({
     mbid: r.mbid,
     artistMbid: r.artist_mbid,
     artistName: r.artist_name,
@@ -102,6 +104,6 @@ export function listReleases(opts: { onlyNew?: boolean; limit?: number } = {}): 
     isNew: lastRefresh != null && r.first_seen_at >= lastRefresh,
   }));
 
-  const filtered = opts.onlyNew ? items.filter((i) => i.isNew) : items;
+  const filtered = opts.onlyNew ? items.filter(i => i.isNew) : items;
   return opts.limit ? filtered.slice(0, opts.limit) : filtered;
 }

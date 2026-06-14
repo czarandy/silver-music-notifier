@@ -18,9 +18,14 @@
     "build": "npm run build:bundle && npm run build:web",
     "build:bundle": "tsup",
     "build:web": "vite build",
-    "prepare": "npm run build",
+    "prepare": "husky && npm run build",
     "refresh": "tsx src/cli/index.ts refresh",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
+  },
+  "lint-staged": {
+    "*.{ts,tsx,js,jsx,json,css,md,html}": "prettier --write"
   },
   "dependencies": {
     "@inquirer/prompts": "^7.2.0",
@@ -43,6 +48,9 @@
     "@types/react-dom": "^19.0.0",
     "@vitejs/plugin-react": "^4.3.4",
     "concurrently": "^9.1.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^15.5.2",
+    "prettier": "^3.8.4",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "silver-ui": "^0.6.0",
