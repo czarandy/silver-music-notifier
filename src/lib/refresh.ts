@@ -1,15 +1,20 @@
-import {getDb, type ArtistRow} from './db.js';
-import {fetchReleaseGroups} from './musicbrainz.js';
+import {AppDb} from './AppDb.js';
+import {
+  fetchReleaseGroups,
+  type ReleaseGroupPrimaryType,
+  type ReleaseGroupSecondaryType,
+} from './musicbrainz.js';
 import {setLastRefreshAt} from './settings.js';
 import {notifyNewReleases} from './notify.js';
+import type {ArtistRow} from './store.js';
 
 export interface NewRelease {
   mbid: string;
   artistMbid: string;
   artistName: string;
   title: string;
-  primaryType: string | null;
-  secondaryTypes: string[];
+  primaryType: ReleaseGroupPrimaryType | null;
+  secondaryTypes: ReleaseGroupSecondaryType[];
   firstReleaseDate: string | null;
 }
 
@@ -32,7 +37,7 @@ export interface RefreshOptions {
 export async function refresh(
   opts: RefreshOptions = {},
 ): Promise<RefreshSummary> {
-  const db = getDb();
+  const db = AppDb.getDefault();
   const startedAt = new Date().toISOString();
   const artists = db
     .prepare('SELECT * FROM artists ORDER BY name COLLATE NOCASE')

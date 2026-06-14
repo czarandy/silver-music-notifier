@@ -1,31 +1,24 @@
 import Database from 'better-sqlite3';
 import {dbPath} from './paths.js';
 
-export interface ArtistRow {
-  mbid: string;
-  name: string;
-  sort_name: string | null;
-  disambiguation: string | null;
-  added_at: string;
-}
-
-export interface ReleaseGroupRow {
-  mbid: string;
-  artist_mbid: string;
-  title: string;
-  primary_type: string | null;
-  secondary_types: string | null;
-  first_release_date: string | null;
-  first_seen_at: string;
-  last_seen_at: string;
-}
-
 export class AppDb {
+  private static defaultDb: AppDb | null = null;
+
   readonly connection: Database.Database;
 
   constructor(path = dbPath()) {
     this.connection = new Database(path);
     this.initialize();
+  }
+
+  static getDefault(): Database.Database {
+    this.defaultDb ??= new AppDb();
+    return this.defaultDb.connection;
+  }
+
+  static closeDefault(): void {
+    this.defaultDb?.close();
+    this.defaultDb = null;
   }
 
   close(): void {
@@ -63,22 +56,4 @@ export class AppDb {
       );
     `);
   }
-}
-
-let appDb: AppDb | null = null;
-
-export function openDb(path = dbPath()): AppDb {
-  return new AppDb(path);
-}
-
-// Open (and lazily initialize) the default SQLite database. Schema creation is
-// idempotent so this is safe to call from every CLI invocation and the server.
-export function getDb(): Database.Database {
-  appDb ??= openDb();
-  return appDb.connection;
-}
-
-export function closeDb(): void {
-  appDb?.close();
-  appDb = null;
 }

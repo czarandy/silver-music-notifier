@@ -1,5 +1,13 @@
-import {getDb, type ArtistRow} from './db.js';
+import {AppDb} from './AppDb.js';
 import {getLastRefreshAt} from './settings.js';
+
+export interface ArtistRow {
+  mbid: string;
+  name: string;
+  sort_name: string | null;
+  disambiguation: string | null;
+  added_at: string;
+}
 
 export interface ReleaseListItem {
   mbid: string;
@@ -21,20 +29,20 @@ export interface NewArtistInput {
 }
 
 export function listArtists(): ArtistRow[] {
-  return getDb()
+  return AppDb.getDefault()
     .prepare('SELECT * FROM artists ORDER BY name COLLATE NOCASE')
     .all() as ArtistRow[];
 }
 
 export function getArtist(mbid: string): ArtistRow | undefined {
-  return getDb().prepare('SELECT * FROM artists WHERE mbid = ?').get(mbid) as
-    | ArtistRow
-    | undefined;
+  return AppDb.getDefault()
+    .prepare('SELECT * FROM artists WHERE mbid = ?')
+    .get(mbid) as ArtistRow | undefined;
 }
 
 // Insert (or no-op if already tracked). Returns true if newly added.
 export function addArtist(input: NewArtistInput): boolean {
-  const res = getDb()
+  const res = AppDb.getDefault()
     .prepare(
       `INSERT INTO artists (mbid, name, sort_name, disambiguation, added_at)
        VALUES (?, ?, ?, ?, ?)
@@ -53,7 +61,7 @@ export function addArtist(input: NewArtistInput): boolean {
 // Remove an artist by MBID, or by exact/case-insensitive name. Cascades to
 // release_groups. Returns the removed artist, or undefined if nothing matched.
 export function removeArtist(idOrName: string): ArtistRow | undefined {
-  const db = getDb();
+  const db = AppDb.getDefault();
   const found =
     (db.prepare('SELECT * FROM artists WHERE mbid = ?').get(idOrName) as
       | ArtistRow
@@ -72,7 +80,7 @@ export function listReleases(
   opts: {onlyNew?: boolean; limit?: number} = {},
 ): ReleaseListItem[] {
   const lastRefresh = getLastRefreshAt();
-  const rows = getDb()
+  const rows = AppDb.getDefault()
     .prepare(
       `SELECT rg.mbid, rg.artist_mbid, a.name AS artist_name, rg.title,
               rg.primary_type, rg.secondary_types, rg.first_release_date,

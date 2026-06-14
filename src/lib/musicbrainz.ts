@@ -1,8 +1,9 @@
 import {MusicBrainzApi} from 'musicbrainz-api';
+import packageJson from '../../package.json' with {type: 'json'};
 import {mbContact} from './settings.js';
 
 // App version is informational for the MusicBrainz User-Agent.
-const APP_VERSION = '0.1.0';
+const APP_VERSION = packageJson.version;
 
 let client: MusicBrainzApi | null = null;
 
@@ -46,23 +47,71 @@ export async function searchArtist(
   }));
 }
 
-export interface FetchedReleaseGroup {
+export const RELEASE_GROUP_PRIMARY_TYPES = [
+  'Album',
+  'Single',
+  'EP',
+  'Broadcast',
+  'Other',
+] as const;
+
+export type ReleaseGroupPrimaryType =
+  (typeof RELEASE_GROUP_PRIMARY_TYPES)[number];
+
+export const RELEASE_GROUP_SECONDARY_TYPES = [
+  'Compilation',
+  'Soundtrack',
+  'Spokenword',
+  'Interview',
+  'Audiobook',
+  'Audio drama',
+  'Live',
+  'Remix',
+  'DJ-mix',
+  'Mixtape/Street',
+  'Demo',
+  'Field recording',
+] as const;
+
+export type ReleaseGroupSecondaryType =
+  (typeof RELEASE_GROUP_SECONDARY_TYPES)[number];
+
+export interface ReleaseGroup {
   mbid: string;
   title: string;
-  primaryType: string | null;
-  secondaryTypes: string[];
+  primaryType: ReleaseGroupPrimaryType | null;
+  secondaryTypes: ReleaseGroupSecondaryType[];
   firstReleaseDate: string | null;
+}
+
+function releaseGroupPrimaryType(
+  value: unknown,
+): ReleaseGroupPrimaryType | null {
+  return RELEASE_GROUP_PRIMARY_TYPES.includes(value as ReleaseGroupPrimaryType)
+    ? (value as ReleaseGroupPrimaryType)
+    : null;
+}
+
+function releaseGroupSecondaryTypes(
+  values: unknown,
+): ReleaseGroupSecondaryType[] {
+  if (!Array.isArray(values)) {
+    return [];
+  }
+  return values.filter((value): value is ReleaseGroupSecondaryType =>
+    RELEASE_GROUP_SECONDARY_TYPES.includes(value as ReleaseGroupSecondaryType),
+  );
 }
 
 // Page through every release-group credited to an artist. The musicbrainz-api
 // client handles rate limiting internally.
 export async function fetchReleaseGroups(
   artistMbid: string,
-): Promise<FetchedReleaseGroup[]> {
-  const out: FetchedReleaseGroup[] = [];
+): Promise<ReleaseGroup[]> {
+  const out: ReleaseGroup[] = [];
   const limit = 100;
   let offset = 0;
-  for (;;) {
+  while (true) {
     const res = await api().browse('release-group', {
       artist: artistMbid,
       limit,
@@ -73,8 +122,8 @@ export async function fetchReleaseGroups(
       out.push({
         mbid: g.id,
         title: g.title,
-        primaryType: g['primary-type'] ?? null,
-        secondaryTypes: g['secondary-types'] ?? [],
+        primaryType: releaseGroupPrimaryType(g['primary-type']),
+        secondaryTypes: releaseGroupSecondaryTypes(g['secondary-types']),
         firstReleaseDate: g['first-release-date'] || null,
       });
     }

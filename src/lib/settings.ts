@@ -1,4 +1,4 @@
-import {getDb} from './db.js';
+import {AppDb} from './AppDb.js';
 
 export interface SmtpSettings {
   host: string;
@@ -46,14 +46,14 @@ const CONFIG_KEY = 'config';
 const LAST_REFRESH_KEY = 'last_refresh_at';
 
 function readRaw(key: string): string | undefined {
-  const row = getDb()
+  const row = AppDb.getDefault()
     .prepare('SELECT value FROM settings WHERE key = ?')
     .get(key) as {value: string} | undefined;
   return row?.value;
 }
 
 function writeRaw(key: string, value: string): void {
-  getDb()
+  AppDb.getDefault()
     .prepare(
       'INSERT INTO settings (key, value) VALUES (?, ?) ' +
         'ON CONFLICT(key) DO UPDATE SET value = excluded.value',

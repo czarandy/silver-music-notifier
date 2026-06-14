@@ -2,7 +2,7 @@ import {mkdtempSync, rmSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {afterEach, describe, expect, it} from 'vitest';
-import {openDb} from '../src/lib/db.js';
+import {AppDb} from '../src/lib/AppDb.js';
 
 const tempDirs: string[] = [];
 
@@ -20,7 +20,7 @@ afterEach(() => {
 
 describe('AppDb', () => {
   it('initializes the schema and enables artist release cascade deletes', () => {
-    const appDb = openDb(tempDbPath());
+    const appDb = new AppDb(tempDbPath());
     const db = appDb.connection;
 
     db.prepare(
