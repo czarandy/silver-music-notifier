@@ -1,5 +1,9 @@
 import {AppDb} from './AppDb.js';
 import {Settings} from './Settings.js';
+import type {
+  ReleaseGroupPrimaryType,
+  ReleaseGroupSecondaryType,
+} from './releaseTypes.js';
 
 export interface ReleaseListOptions {
   onlyNew?: boolean;
@@ -45,6 +49,7 @@ export class Release {
 
   static list(opts: ReleaseListOptions = {}): Release[] {
     const lastRefresh = Settings.getLastRefreshAt();
+    const settings = Settings.load();
     const rows = AppDb.getDefault()
       .prepare(
         `SELECT rg.mbid, rg.artist_mbid, a.name AS artist_name, rg.title,
@@ -83,7 +88,18 @@ export class Release {
           lastRefresh,
         }),
     );
-    const filtered = opts.onlyNew ? items.filter(i => i.isNew) : items;
+    // Re-apply the current release-type filters so releases that no longer
+    // match the user's settings (e.g. a secondary type they just chose to
+    // exclude) drop out of the list without requiring a refresh.
+    const matching = items.filter(item =>
+      settings.includeRelease({
+        primaryType: item.primaryType as ReleaseGroupPrimaryType | null,
+        secondaryTypes: item.secondaryTypes
+          ? (item.secondaryTypes.split(', ') as ReleaseGroupSecondaryType[])
+          : [],
+      }),
+    );
+    const filtered = opts.onlyNew ? matching.filter(i => i.isNew) : matching;
     return opts.limit ? filtered.slice(0, opts.limit) : filtered;
   }
 

@@ -43,7 +43,7 @@ function seedRelease(input: {
       'artist-1',
       input.title,
       'Album',
-      'Live',
+      null,
       input.firstReleaseDate,
       input.firstSeenAt,
       input.firstSeenAt,
@@ -83,7 +83,7 @@ describe('Release', () => {
         artistName: 'Silver Artist',
         title: 'New Release',
         primaryType: 'Album',
-        secondaryTypes: 'Live',
+        secondaryTypes: null,
         firstReleaseDate: '2026-01-01',
         firstSeenAt: '2026-01-04T00:00:00.000Z',
         isNew: true,
@@ -93,5 +93,41 @@ describe('Release', () => {
     expect(Release.list({onlyNew: true})).toEqual([]);
     expect(Release.dismiss('missing')).toBe(false);
     expect(Release.list({limit: 1}).map(r => r.mbid)).toEqual(['release-new']);
+  });
+
+  it('hides stored releases that no longer pass the current type filters', () => {
+    AppDb.getDefault()
+      .prepare(
+        `INSERT INTO artists (mbid, name, sort_name, disambiguation, added_at)
+         VALUES (?, ?, ?, ?, ?)`,
+      )
+      .run('artist-1', 'Silver Artist', null, null, '2026-01-01T00:00:00.000Z');
+    const insert = (
+      mbid: string,
+      primary: string,
+      secondary: string | null,
+    ): void => {
+      AppDb.getDefault()
+        .prepare(
+          `INSERT INTO release_groups
+            (mbid, artist_mbid, title, primary_type, secondary_types,
+             first_release_date, first_seen_at, last_seen_at)
+           VALUES (?, 'artist-1', ?, ?, ?, '2026-01-01', ?, ?)`,
+        )
+        .run(mbid, mbid, primary, secondary, '2026-01-02', '2026-01-02');
+    };
+    insert('keep-album', 'Album', null);
+    insert('drop-live', 'Album', 'Live'); // excluded secondary by default
+    insert('drop-single', 'Single', null); // primary not tracked by default
+
+    expect(Release.list().map(r => r.mbid)).toEqual(['keep-album']);
+
+    // Tracking Singles brings the single back, without re-inserting anything.
+    Settings.save({releaseFilter: {primaryTypes: ['Album', 'Single']}});
+    expect(
+      Release.list()
+        .map(r => r.mbid)
+        .sort(),
+    ).toEqual(['drop-single', 'keep-album']);
   });
 });
