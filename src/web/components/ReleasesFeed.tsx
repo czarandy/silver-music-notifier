@@ -7,6 +7,7 @@ import {
   Layout,
   LayoutContent,
   LayoutHeader,
+  Link,
   proportional,
   Spinner,
   Table,
@@ -18,6 +19,7 @@ import {
 } from 'silver-ui';
 import {api, type Release} from '../api.js';
 import {formatReleaseDate} from '../../lib/formatReleaseDate.js';
+import {artistUrl, releaseGroupUrl} from '../musicbrainzUrls.js';
 
 type ReleaseSortKey = 'title' | 'artistName' | 'type' | 'date';
 
@@ -110,7 +112,9 @@ export function ReleasesFeed() {
               gap: 8,
               width: '100%',
             }}>
-            <span>{r.title}</span>
+            <Link href={releaseGroupUrl(r.mbid)} isExternalLink>
+              {r.title}
+            </Link>
             {showNewBadges && r.isNew ? (
               <button
                 type="button"
@@ -133,7 +137,11 @@ export function ReleasesFeed() {
         header: 'Artist',
         sortable: true,
         width: proportional(2.5, {minWidth: 180}),
-        renderCell: r => r.artistName,
+        renderCell: r => (
+          <Link href={artistUrl(r.artistMbid)} isExternalLink>
+            {r.artistName}
+          </Link>
+        ),
       },
       {
         key: 'type',

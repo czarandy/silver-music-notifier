@@ -59,7 +59,7 @@ beforeEach(() => {
   });
   vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
 
-  mocks.startServer.mockResolvedValue(undefined);
+  mocks.startServer.mockImplementation((port: number) => Promise.resolve(port));
   mocks.open.mockResolvedValue(undefined);
 });
 
@@ -188,6 +188,26 @@ describe('add', () => {
     mocks.searchArtist.mockResolvedValue([]);
     await run(registerAdd, ['add', 'nobody']);
     expect(out()).toContain('No MusicBrainz artists found for "nobody".');
+  });
+
+  it('does not mark a newly added artist back-catalog as new', async () => {
+    // Simulate a prior global refresh in the past, so freshly-seen releases
+    // would otherwise count as "new".
+    Settings.setLastRefreshAt('2026-01-01T00:00:00.000Z');
+    mocks.fetchReleaseGroups.mockResolvedValue([
+      {
+        mbid: 'rg-1',
+        title: 'Debut',
+        primaryType: 'Album',
+        secondaryTypes: [],
+        firstReleaseDate: '2026-01-01',
+      },
+    ]);
+
+    await run(registerAdd, ['add', 'Silver', '--mbid', 'mbid-1']);
+
+    expect(Release.list().map(r => r.mbid)).toEqual(['rg-1']);
+    expect(Release.list({onlyNew: true})).toEqual([]);
   });
 });
 
@@ -384,6 +404,18 @@ describe('web', () => {
     await run(registerWeb, ['web', '--port', '4000']);
     expect(mocks.startServer).toHaveBeenCalledWith(4000);
     expect(mocks.open).toHaveBeenCalledWith('http://localhost:4000');
+  });
+
+  it('falls back to the next port when the requested one is in use', async () => {
+    mocks.startServer.mockImplementationOnce(() =>
+      Promise.reject(Object.assign(new Error('in use'), {code: 'EADDRINUSE'})),
+    );
+
+    await run(registerWeb, ['web', '--port', '3001', '--no-open']);
+
+    expect(mocks.startServer).toHaveBeenNthCalledWith(1, 3001);
+    expect(mocks.startServer).toHaveBeenNthCalledWith(2, 3002);
+    expect(out()).toContain('http://localhost:3002');
   });
 });
 

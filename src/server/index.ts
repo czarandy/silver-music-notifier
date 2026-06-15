@@ -161,8 +161,15 @@ export function createApp() {
   return app;
 }
 
-export function startServer(port: number): Promise<void> {
-  return new Promise(resolve => {
-    createApp().listen(port, () => resolve());
+// Start the web server, resolving with the port it bound to. Rejects on a
+// listen error (e.g. EADDRINUSE) so callers can retry on a different port.
+export function startServer(port: number): Promise<number> {
+  return new Promise((resolve, reject) => {
+    const server = createApp().listen(port);
+    server.once('listening', () => {
+      server.removeListener('error', reject);
+      resolve(port);
+    });
+    server.once('error', reject);
   });
 }

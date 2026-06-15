@@ -11,6 +11,7 @@ import {
   Layout,
   LayoutContent,
   LayoutHeader,
+  Link,
   List,
   ListItem,
   Spinner,
@@ -19,6 +20,7 @@ import {
   type StandardSearchableItem,
 } from 'silver-ui';
 import {api, type Artist, type ArtistSearchResult} from '../api.js';
+import {artistUrl} from '../musicbrainzUrls.js';
 
 type ArtistSearchItem = StandardSearchableItem<ArtistSearchResult>;
 
@@ -123,7 +125,11 @@ export function ArtistsPanel() {
         return (
           <ListItem
             key={a.mbid}
-            label={a.name}
+            label={
+              <Link href={artistUrl(a.mbid)} isExternalLink>
+                {a.name}
+              </Link>
+            }
             description={a.disambiguation}
             endContent={
               <HStack align="center" gap={2}>

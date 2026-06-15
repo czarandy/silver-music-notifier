@@ -19,15 +19,17 @@ driver), which is built automatically on install.
 
 MusicBrainz requires every API client to identify a contact (an email or URL) in
 its User-Agent, and throttles or blocks requests without one. The first time you
-run a command that hits the API (`add` or `refresh`), the CLI **prompts you for a
-contact** and saves it. You can also set it ahead of time:
+run most CLI commands, the CLI **prompts you for a contact** and saves it.
+Non-network setup commands such as `config set`, `clear-data`, and `dismiss`
+can run before the contact is configured. You can also set it ahead of time:
 
 ```bash
 silver-music-notifier config set musicbrainz.contact you@example.com
 ```
 
-or in the web UI's **Settings** view. In a non-interactive context (no TTY), the
-command errors with this guidance instead of prompting.
+or in the web UI's **Settings** view after the app has launched. In a
+non-interactive context (no TTY), commands that require the contact error with
+this guidance instead of prompting.
 
 ## Usage
 
@@ -55,9 +57,12 @@ silver-music-notifier add "X" --mbid <mbid>    # add an exact MBID
 silver-music-notifier list                     # list tracked artists
 silver-music-notifier remove "Radiohead"       # stop tracking (by name or MBID)
 silver-music-notifier refresh                  # fetch releases + notify on new ones
+silver-music-notifier refresh --no-notify      # fetch without sending email
 silver-music-notifier releases --new --limit 20
+silver-music-notifier dismiss <release-mbid>   # hide a release's New badge
 silver-music-notifier config get               # show settings
 silver-music-notifier config set notify.email true
+silver-music-notifier clear-data               # delete artists/releases, keep settings
 ```
 
 ## Notifications
@@ -65,11 +70,42 @@ silver-music-notifier config set notify.email true
 When `refresh` finds releases it has never seen before, it can notify you two ways:
 
 - **In-page badges** — "New" badges in the web UI (always available).
-- **Email** — an HTML summary, sent once SMTP is configured and the email toggle
-  is on. Configure it in the **Settings** view or via `config set smtp.*`.
+- **Email** — one HTML email per new release, sent once SMTP is configured and
+  the email toggle is on. Configure it in the **Settings** view or via
+  `config set smtp.host`, `smtp.port`, `smtp.secure`, `smtp.user`, `smtp.pass`,
+  `smtp.from`, and `smtp.to`.
+
+Adding a new artist refreshes that artist immediately, but treats the existing
+catalog as your starting baseline: it does not send email for those releases or
+mark them with "New" badges.
 
 `refresh` is manual — run it from the CLI, the web button, or your own scheduler
 (cron, systemd timer, etc.).
+
+### Cron refresh
+
+To check for new releases on a schedule, first make sure the CLI has the required
+MusicBrainz contact and any notification settings configured:
+
+```bash
+silver-music-notifier config set musicbrainz.contact you@example.com
+silver-music-notifier config set notify.email true   # optional, if SMTP is configured
+```
+
+Then add a cron entry. This example refreshes every day at 9:00 AM:
+
+```cron
+0 9 * * * /usr/bin/env silver-music-notifier refresh >> "$HOME/.local/share/silver-music-notifier/cron.log" 2>&1
+```
+
+If cron cannot find the command, use the full path from
+`command -v silver-music-notifier`. To use a custom database location, set
+`SILVER_MUSIC_NOTIFIER_DATA_DIR` in the cron line:
+
+```cron
+0 9 * * *
+SILVER_MUSIC_NOTIFIER_DATA_DIR="$HOME/.local/share/silver-music-notifier" /usr/bin/env silver-music-notifier refresh >> "$HOME/.local/share/silver-music-notifier/cron.log" 2>&1
+```
 
 ## Data & configuration
 
@@ -89,23 +125,3 @@ variable.
 Notification methods (in-page / email) and the MusicBrainz contact are
 configured in the web UI's **Settings** view or via `silver-music-notifier
 config set …` — not through environment variables.
-
-The only environment variable is:
-
-- `SILVER_MUSIC_NOTIFIER_DATA_DIR` — override the data directory (must be an env
-  var, since all other settings are stored inside it).
-
-## Development
-
-```bash
-npm install
-npm run dev        # backend (tsx watch, :3001) + Vite dev server (:5173, proxies /api)
-npm run build      # bundle CLI/server (tsup) + build web (vite) into dist/
-npm run typecheck
-npm run lint       # eslint
-npm run lint:fix   # eslint --fix
-npm run format     # prettier --write .
-```
-
-A Husky `pre-commit` hook runs `lint-staged` (eslint `--fix` then prettier on
-staged files) followed by `typecheck`, so commits are auto-formatted and linted.

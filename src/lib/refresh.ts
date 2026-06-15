@@ -35,6 +35,10 @@ async function refreshArtists(
   artists: Artist[],
   opts: RefreshOptions,
   persistLastRefresh: boolean,
+  // When true, releases discovered in this run are recorded as already-seen so
+  // they don't show "New" badges. Used when first adding an artist: their whole
+  // back-catalog is the baseline, not news (mirrors the no-notify behavior).
+  markReleasesSeen: boolean,
 ): Promise<RefreshSummary> {
   const db = AppDb.getDefault();
   const startedAt = new Date().toISOString();
@@ -50,9 +54,9 @@ async function refreshArtists(
   const insert = db.prepare(`
     INSERT INTO release_groups
       (mbid, artist_mbid, title, primary_type, secondary_types,
-       first_release_date, first_seen_at, last_seen_at)
+       first_release_date, first_seen_at, last_seen_at, dismissed_at)
     VALUES (@mbid, @artist_mbid, @title, @primary_type, @secondary_types,
-            @first_release_date, @now, @now)
+            @first_release_date, @now, @now, @dismissed_at)
     ON CONFLICT(mbid) DO UPDATE SET
       title = excluded.title,
       primary_type = excluded.primary_type,
@@ -86,6 +90,7 @@ async function refreshArtists(
             secondary_types: g.secondaryTypes.join(', ') || null,
             first_release_date: g.firstReleaseDate,
             now,
+            dismissed_at: markReleasesSeen ? now : null,
           });
           if (!seen) {
             newReleases.push({
@@ -134,7 +139,7 @@ export async function refreshArtist(
   artist: Artist,
   opts: RefreshOptions = {},
 ): Promise<RefreshSummary> {
-  return refreshArtists([artist], opts, false);
+  return refreshArtists([artist], opts, false, true);
 }
 
 // Fetch release-groups for every tracked artist, upsert them, and collect the
@@ -143,5 +148,5 @@ export async function refreshArtist(
 export async function refresh(
   opts: RefreshOptions = {},
 ): Promise<RefreshSummary> {
-  return refreshArtists(Artist.list(), opts, true);
+  return refreshArtists(Artist.list(), opts, true, false);
 }

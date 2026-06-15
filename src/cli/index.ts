@@ -9,6 +9,7 @@ import {registerDismiss} from './commands/dismiss.js';
 import {registerConfig} from './commands/config.js';
 import {registerClearData} from './commands/clearData.js';
 import {ensureMbContact} from './ensureContact.js';
+import packageJson from '../../package.json';
 
 const program = new Command();
 
@@ -32,7 +33,7 @@ program
   .description(
     'Track artists and get notified of their new music releases from MusicBrainz.',
   )
-  .version('0.1.0');
+  .version(packageJson.version);
 
 registerWeb(program);
 registerList(program);

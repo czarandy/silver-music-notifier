@@ -1,43 +1,27 @@
 import nodemailer from 'nodemailer';
 import {Settings} from './Settings.js';
+import {Release} from './Release.js';
+import {formatReleaseDate} from './formatReleaseDate.js';
 import type {NewRelease} from './refresh.js';
+import type {
+  ReleaseGroupPrimaryType,
+  ReleaseGroupSecondaryType,
+} from './releaseTypes.js';
 
-function summaryLine(newReleases: NewRelease[]): string {
-  const n = newReleases.length;
-  const artists = [...new Set(newReleases.map(r => r.artistName))];
-  const who =
-    artists.length <= 3
-      ? artists.join(', ')
-      : `${artists.slice(0, 3).join(', ')} +${artists.length - 3} more`;
-  return `${n} new release${n === 1 ? '' : 's'} from ${who}`;
+function subjectLine(r: NewRelease): string {
+  return `New Release: ${r.title} by ${r.artistName}`;
 }
 
-function emailHtml(newReleases: NewRelease[]): string {
-  const rows = newReleases
-    .map(r => {
-      const type = [r.primaryType, ...r.secondaryTypes]
-        .filter(Boolean)
-        .join(' / ');
-      const date = r.firstReleaseDate ?? '—';
-      return `<tr>
-        <td style="padding:4px 12px 4px 0">${escapeHtml(r.artistName)}</td>
-        <td style="padding:4px 12px 4px 0"><strong>${escapeHtml(r.title)}</strong></td>
-        <td style="padding:4px 12px 4px 0">${escapeHtml(type)}</td>
-        <td style="padding:4px 0">${escapeHtml(date)}</td>
-      </tr>`;
-    })
-    .join('');
+function emailHtml(r: NewRelease): string {
+  const type = [r.primaryType, ...r.secondaryTypes].filter(Boolean).join(' / ');
+  const title = `<strong>${escapeHtml(r.title)}</strong>`;
+  const artist = escapeHtml(r.artistName);
+  const typeText = type ? ` (${escapeHtml(type)})` : '';
+  const dateText = r.firstReleaseDate
+    ? ` was released on ${escapeHtml(formatReleaseDate(r.firstReleaseDate))}`
+    : ' is out';
   return `<div style="font-family:system-ui,sans-serif">
-    <h2>${escapeHtml(summaryLine(newReleases))}</h2>
-    <table style="border-collapse:collapse">
-      <thead><tr>
-        <th align="left" style="padding:4px 12px 4px 0">Artist</th>
-        <th align="left" style="padding:4px 12px 4px 0">Title</th>
-        <th align="left" style="padding:4px 12px 4px 0">Type</th>
-        <th align="left" style="padding:4px 0">Released</th>
-      </tr></thead>
-      <tbody>${rows}</tbody>
-    </table>
+    <p>${title} by ${artist}${typeText}${dateText}.</p>
   </div>`;
 }
 
@@ -61,21 +45,25 @@ function transport(s: Settings) {
   });
 }
 
-async function emailNotify(
-  newReleases: NewRelease[],
+// Send one notification email for a single release. `subjectPrefix` lets the
+// test email reuse the exact same layout while marking the subject as a test.
+async function sendReleaseEmail(
+  release: NewRelease,
   s: Settings,
+  subjectPrefix = '',
 ): Promise<void> {
   await transport(s).sendMail({
     from: s.smtp.from || s.smtp.user,
     to: s.smtp.to,
-    subject: summaryLine(newReleases),
-    html: emailHtml(newReleases),
+    subject: subjectPrefix + subjectLine(release),
+    html: emailHtml(release),
   });
 }
 
 // Dispatch notifications for newly-discovered releases according to user
-// settings. Email fails soft: a broken SMTP config must not prevent the refresh
-// itself from succeeding.
+// settings, sending one email per release. Email fails soft: a broken SMTP
+// config (or a single failed send) must not prevent the refresh itself from
+// succeeding or block the remaining emails.
 export async function notifyNewReleases(
   newReleases: NewRelease[],
 ): Promise<void> {
@@ -88,16 +76,51 @@ export async function notifyNewReleases(
     if (!s.smtpIsConfigured()) {
       console.warn('Email enabled but SMTP not configured — skipping email.');
     } else {
-      try {
-        await emailNotify(newReleases, s);
-      } catch (err) {
-        console.error('Email notification failed:', errMsg(err));
+      for (const release of newReleases) {
+        try {
+          await sendReleaseEmail(release, s);
+        } catch (err) {
+          console.error(
+            `Email notification failed for "${release.title}":`,
+            errMsg(err),
+          );
+        }
       }
     }
   }
 }
 
-// Send a test email using the current (or provided) SMTP settings. Throws on
+// A representative release to preview in the test email: the newest tracked
+// release, or a synthetic sample when nothing is tracked yet.
+function sampleRelease(): NewRelease {
+  const [latest] = Release.list({limit: 1});
+  if (latest) {
+    return {
+      mbid: latest.mbid,
+      artistMbid: latest.artistMbid,
+      artistName: latest.artistName,
+      title: latest.title,
+      primaryType: latest.primaryType as ReleaseGroupPrimaryType | null,
+      secondaryTypes: latest.secondaryTypes
+        ? (latest.secondaryTypes.split(', ') as ReleaseGroupSecondaryType[])
+        : [],
+      firstReleaseDate: latest.firstReleaseDate,
+    };
+  }
+  return {
+    mbid: 'sample',
+    artistMbid: 'sample',
+    artistName: 'Example Artist',
+    title: 'Example Album',
+    primaryType: 'Album',
+    secondaryTypes: [],
+    firstReleaseDate: new Date().toISOString().slice(0, 10),
+  };
+}
+
+// Send a test email using the current (or provided) SMTP settings. It mirrors a
+// real release notification (using the newest tracked release) so the user can
+// see exactly what they'll get, but prefixes the subject with [TEST]. Throws on
 // failure so callers can surface the error to the user.
 export async function sendTestEmail(override?: Settings): Promise<void> {
   const s = override ?? Settings.load();
@@ -106,12 +129,7 @@ export async function sendTestEmail(override?: Settings): Promise<void> {
       'SMTP is not configured (host, user, and recipient required).',
     );
   }
-  await transport(s).sendMail({
-    from: s.smtp.from || s.smtp.user,
-    to: s.smtp.to,
-    subject: 'silver-music-notifier test email',
-    text: 'This is a test email from silver-music-notifier. SMTP is working.',
-  });
+  await sendReleaseEmail(sampleRelease(), s, '[TEST] ');
 }
 
 function errMsg(err: unknown): string {
