@@ -162,6 +162,7 @@ export function ReleasesFeed() {
       header={
         <LayoutHeader
           title="Releases"
+          level={3}
           subtitle={`${releases.length} release${releases.length === 1 ? '' : 's'} tracked`}
           padding={0}
           endContent={

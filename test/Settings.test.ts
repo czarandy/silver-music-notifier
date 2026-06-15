@@ -27,7 +27,7 @@ afterEach(() => {
 describe('Settings', () => {
   it('loads defaults and deep-merges saved patches', () => {
     expect(Settings.load()).toMatchObject({
-      notify: {inPage: true, desktop: true, email: false},
+      notify: {inPage: true, email: false},
       smtp: {port: 587, secure: false},
       musicbrainz: {contact: ''},
     });
@@ -40,7 +40,6 @@ describe('Settings', () => {
 
     expect(saved.notify).toEqual({
       inPage: true,
-      desktop: true,
       email: true,
     });
     expect(saved.smtp).toMatchObject({
@@ -61,7 +60,7 @@ describe('Settings', () => {
       .run('config', '{not json');
 
     expect(Settings.load()).toMatchObject({
-      notify: {inPage: true, desktop: true, email: false},
+      notify: {inPage: true, email: false},
       smtp: {host: '', port: 587},
       musicbrainz: {contact: ''},
     });
@@ -81,13 +80,14 @@ describe('Settings', () => {
   });
 
   describe('releaseFilter', () => {
-    it('defaults to Album only, excluding Remix/Live/Compilation', () => {
+    it('defaults to Album only, excluding common album variants', () => {
       const {releaseFilter} = Settings.load();
       expect(releaseFilter.primaryTypes).toEqual(['Album']);
       expect(releaseFilter.excludeSecondaryTypes).toEqual([
         'Remix',
         'Live',
         'Compilation',
+        'Mixtape/Street',
       ]);
     });
 
@@ -125,15 +125,14 @@ describe('Settings', () => {
       expect(releaseFilter.excludeSecondaryTypes).toEqual(['Live']);
     });
 
-    it('supportPrimaryType reflects the configured list, always keeping untyped', () => {
+    it('supportPrimaryType reflects the configured list, filtering untyped groups', () => {
       const settings = Settings.save({
         releaseFilter: {primaryTypes: ['Album', 'EP']},
       });
 
       expect(settings.supportPrimaryType('Album')).toBe(true);
       expect(settings.supportPrimaryType('Single')).toBe(false);
-      // Untyped release-groups are always kept regardless of the filter.
-      expect(settings.supportPrimaryType(null)).toBe(true);
+      expect(settings.supportPrimaryType(null)).toBe(false);
     });
 
     it('supportSecondaryTypes excludes groups carrying any excluded type', () => {

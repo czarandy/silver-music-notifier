@@ -33,7 +33,6 @@ function parseTypeList(
 function flatten(s: Settings): Record<string, string> {
   return {
     'notify.inPage': String(s.notify.inPage),
-    'notify.desktop': String(s.notify.desktop),
     'notify.email': String(s.notify.email),
     'smtp.host': s.smtp.host,
     'smtp.port': String(s.smtp.port),

@@ -1,5 +1,4 @@
 import nodemailer from 'nodemailer';
-import notifier from 'node-notifier';
 import {Settings} from './Settings.js';
 import type {NewRelease} from './refresh.js';
 
@@ -11,13 +10,6 @@ function summaryLine(newReleases: NewRelease[]): string {
       ? artists.join(', ')
       : `${artists.slice(0, 3).join(', ')} +${artists.length - 3} more`;
   return `${n} new release${n === 1 ? '' : 's'} from ${who}`;
-}
-
-function desktopNotify(newReleases: NewRelease[]): void {
-  notifier.notify({
-    title: 'New music releases',
-    message: summaryLine(newReleases),
-  });
 }
 
 function emailHtml(newReleases: NewRelease[]): string {
@@ -60,11 +52,12 @@ function escapeHtml(s: string): string {
 }
 
 function transport(s: Settings) {
+  const smtp = s.resolvedSmtp();
   return nodemailer.createTransport({
-    host: s.smtp.host,
-    port: s.smtp.port,
-    secure: s.smtp.secure,
-    auth: s.smtp.user ? {user: s.smtp.user, pass: s.smtp.pass} : undefined,
+    host: smtp.host,
+    port: smtp.port,
+    secure: smtp.secure,
+    auth: smtp.user ? {user: smtp.user, pass: smtp.pass} : undefined,
   });
 }
 
@@ -81,8 +74,8 @@ async function emailNotify(
 }
 
 // Dispatch notifications for newly-discovered releases according to user
-// settings. Each channel fails soft: a broken SMTP config must not prevent the
-// desktop notification (or the refresh itself) from succeeding.
+// settings. Email fails soft: a broken SMTP config must not prevent the refresh
+// itself from succeeding.
 export async function notifyNewReleases(
   newReleases: NewRelease[],
 ): Promise<void> {
@@ -90,14 +83,6 @@ export async function notifyNewReleases(
     return;
   }
   const s = Settings.load();
-
-  if (s.notify.desktop) {
-    try {
-      desktopNotify(newReleases);
-    } catch (err) {
-      console.error('Desktop notification failed:', errMsg(err));
-    }
-  }
 
   if (s.notify.email) {
     if (!s.smtpIsConfigured()) {

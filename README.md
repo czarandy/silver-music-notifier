@@ -10,6 +10,8 @@ local web UI (built with [silver-ui](https://silver-ui.com)).
 npm install -g silver-music-notifier
 ```
 
+Requires Node.js 22.12.0 or newer.
+
 This requires a working build toolchain for `better-sqlite3` (the native SQLite
 driver), which is built automatically on install.
 
@@ -55,15 +57,14 @@ silver-music-notifier remove "Radiohead"       # stop tracking (by name or MBID)
 silver-music-notifier refresh                  # fetch releases + notify on new ones
 silver-music-notifier releases --new --limit 20
 silver-music-notifier config get               # show settings
-silver-music-notifier config set notify.desktop false
+silver-music-notifier config set notify.email true
 ```
 
 ## Notifications
 
-When `refresh` finds releases it has never seen before, it can notify you three ways:
+When `refresh` finds releases it has never seen before, it can notify you two ways:
 
 - **In-page badges** — "New" badges in the web UI (always available).
-- **Desktop** — a system notification (enabled by default).
 - **Email** — an HTML summary, sent once SMTP is configured and the email toggle
   is on. Configure it in the **Settings** view or via `config set smtp.*`.
 
@@ -85,7 +86,7 @@ variable.
 > that local SQLite file. This is a single-user local tool; treat the data
 > directory accordingly.
 
-Notification methods (in-page / desktop / email) and the MusicBrainz contact are
+Notification methods (in-page / email) and the MusicBrainz contact are
 configured in the web UI's **Settings** view or via `silver-music-notifier
 config set …` — not through environment variables.
 

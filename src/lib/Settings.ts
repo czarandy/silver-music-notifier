@@ -6,7 +6,12 @@ import {
   type ReleaseGroupSecondaryType,
 } from './releaseTypes.js';
 
+export type SmtpProvider = 'gmail' | 'custom';
+
 export interface SmtpSettings {
+  // Provider preset. 'gmail' fixes host/port/secure so the user only supplies
+  // their address and an app password; 'custom' exposes the raw SMTP fields.
+  provider: SmtpProvider;
   host: string;
   port: number;
   secure: boolean;
@@ -16,9 +21,12 @@ export interface SmtpSettings {
   to: string;
 }
 
+// Fixed SMTP connection settings for Gmail. When the Gmail provider is
+// selected these override whatever host/port/secure are stored.
+const GMAIL_SMTP = {host: 'smtp.gmail.com', port: 465, secure: true} as const;
+
 export interface NotifySettings {
   inPage: boolean;
-  desktop: boolean;
   email: boolean;
 }
 
@@ -52,10 +60,10 @@ export type SettingsPatch = Partial<{
 const DEFAULT_SETTINGS: SettingsInput = {
   notify: {
     inPage: true,
-    desktop: true,
     email: false,
   },
   smtp: {
+    provider: 'gmail',
     host: '',
     port: 587,
     secure: false,
@@ -175,8 +183,19 @@ export class Settings {
     );
   }
 
+  // SMTP settings with the provider preset applied. For Gmail the host, port,
+  // and secure flag are fixed, so connection code should use this rather than
+  // reading this.smtp directly.
+  resolvedSmtp(): SmtpSettings {
+    if (this.smtp.provider === 'gmail') {
+      return {...this.smtp, ...GMAIL_SMTP};
+    }
+    return this.smtp;
+  }
+
   smtpIsConfigured(): boolean {
-    return Boolean(this.smtp.host && this.smtp.user && this.smtp.to);
+    const smtp = this.resolvedSmtp();
+    return Boolean(smtp.host && smtp.user && smtp.to);
   }
 
   // The MusicBrainz contact string used in the API User-Agent. MusicBrainz

@@ -3,13 +3,17 @@ import {useMutation, useQuery, useQueryClient} from '@tanstack/react-query';
 import {X} from 'lucide-react';
 import {
   AutocompleteInput,
+  Badge,
   Button,
   EmptyState,
+  HStack,
   Item,
+  Layout,
+  LayoutContent,
+  LayoutHeader,
   List,
   ListItem,
   Spinner,
-  Tag,
   useToast,
   type SearchSource,
   type StandardSearchableItem,
@@ -26,6 +30,10 @@ export function ArtistsPanel() {
   const artistsQuery = useQuery({
     queryKey: ['artists'],
     queryFn: api.listArtists,
+  });
+  const releasesQuery = useQuery({
+    queryKey: ['releases'],
+    queryFn: api.listReleases,
   });
   const addMutation = useMutation({
     mutationFn: api.addArtist,
@@ -58,6 +66,15 @@ export function ArtistsPanel() {
     },
   });
   const artists = artistsQuery.data ?? [];
+  const releases = releasesQuery.data ?? [];
+
+  const releaseCountsByArtist = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const release of releases) {
+      counts.set(release.artistMbid, (counts.get(release.artistMbid) ?? 0) + 1);
+    }
+    return counts;
+  }, [releases]);
 
   const searchSource = useMemo<SearchSource<ArtistSearchItem>>(
     () => ({
@@ -101,86 +118,123 @@ export function ArtistsPanel() {
 
   const artistItems = useMemo(
     () =>
-      artists.map(a => (
-        <ListItem
-          key={a.mbid}
-          label={a.name}
-          description={a.disambiguation}
-          endContent={
-            <span
-              style={{display: 'inline-flex', gap: 8, alignItems: 'center'}}>
-              <span style={{display: 'inline-flex', gap: 6}}>
-                {a.type ? <Tag label={a.type} color="gray" size="sm" /> : null}
-                {a.country ? (
-                  <Tag label={a.country} color="blue" size="sm" />
+      artists.map(a => {
+        const releaseCount = releaseCountsByArtist.get(a.mbid) ?? 0;
+        return (
+          <ListItem
+            key={a.mbid}
+            label={a.name}
+            description={a.disambiguation}
+            endContent={
+              <HStack align="center" gap={2}>
+                <Badge
+                  label={`${releaseCount} release${releaseCount === 1 ? '' : 's'}`}
+                  color="neutral"
+                  size="sm"
+                />
+                {a.type ? (
+                  <Badge label={a.type} color="neutral" size="sm" />
                 ) : null}
-              </span>
-              <Button
-                label="Remove"
-                icon={X}
-                isIconOnly
-                variant="ghost"
-                size="sm"
-                onClick={() => remove(a)}
-              />
-            </span>
-          }
-        />
-      )),
-    [artists, remove],
+                {a.country ? (
+                  <Badge label={a.country} color="teal" size="sm" />
+                ) : null}
+                <Button
+                  label="Remove"
+                  icon={X}
+                  isIconOnly
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => remove(a)}
+                />
+              </HStack>
+            }
+          />
+        );
+      }),
+    [artists, releaseCountsByArtist, remove],
   );
 
   return (
-    <div style={{display: 'flex', flexDirection: 'column', gap: 24}}>
-      <section>
-        <AutocompleteInput<ArtistSearchItem>
-          label="Add an artist"
-          placeholder="Search MusicBrainz by name…"
-          value={selectedSearchItem}
-          searchSource={searchSource}
-          debounceMs={350}
-          emptySearchResultsText="No MusicBrainz artists found"
-          onChange={item => {
-            setSelectedSearchItem(item);
-            if (item?.auxiliaryData) {
-              add(item.auxiliaryData);
-            }
-          }}
-          renderItem={item => {
-            const artist = item.auxiliaryData;
-            return (
-              <Item
-                label={item.label}
-                description={artist?.disambiguation}
-                endContent={
-                  <span style={{display: 'inline-flex', gap: 6}}>
-                    {artist?.type ? (
-                      <Tag label={artist.type} color="gray" size="sm" />
-                    ) : null}
-                    {artist?.country ? (
-                      <Tag label={artist.country} color="blue" size="sm" />
-                    ) : null}
-                  </span>
-                }
-              />
-            );
-          }}
-          hasClear
+    <Layout
+      height="auto"
+      hasDividers={false}
+      header={
+        <LayoutHeader
+          title="Artists"
+          level={3}
+          subtitle={`${artists.length} artist${artists.length === 1 ? '' : 's'} tracked`}
+          padding={0}
         />
-      </section>
+      }
+      content={
+        <LayoutContent padding={0}>
+          <div
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 8,
+              marginTop: 16,
+            }}>
+            <section>
+              <AutocompleteInput<ArtistSearchItem>
+                label="Add an artist"
+                placeholder="Search by name…"
+                value={selectedSearchItem}
+                searchSource={searchSource}
+                debounceMs={350}
+                emptySearchResultsText="No MusicBrainz artists found"
+                onChange={item => {
+                  setSelectedSearchItem(item);
+                  if (item?.auxiliaryData) {
+                    add(item.auxiliaryData);
+                  }
+                }}
+                renderItem={item => {
+                  const artist = item.auxiliaryData;
+                  return (
+                    <Item
+                      label={item.label}
+                      description={artist?.disambiguation}
+                      endContent={
+                        <HStack align="center" gap={1}>
+                          {artist?.type ? (
+                            <Badge
+                              label={artist.type}
+                              color="neutral"
+                              size="sm"
+                            />
+                          ) : null}
+                          {artist?.country ? (
+                            <Badge
+                              label={artist.country}
+                              color="teal"
+                              size="sm"
+                            />
+                          ) : null}
+                        </HStack>
+                      }
+                    />
+                  );
+                }}
+                hasClear
+              />
+            </section>
 
-      <section>
-        {artistsQuery.isLoading ? (
-          <Spinner label="Loading artists…" />
-        ) : artists.length === 0 ? (
-          <EmptyState
-            title="No artists yet"
-            description="Search above to start tracking an artist."
-          />
-        ) : (
-          <List hasDividers>{artistItems}</List>
-        )}
-      </section>
-    </div>
+            <section>
+              {artistsQuery.isLoading ? (
+                <Spinner label="Loading artists…" />
+              ) : artists.length === 0 ? (
+                <EmptyState
+                  title="No artists yet"
+                  description="Search above to start tracking an artist."
+                />
+              ) : (
+                <List hasDividers>{artistItems}</List>
+              )}
+            </section>
+          </div>
+        </LayoutContent>
+      }
+    />
   );
 }

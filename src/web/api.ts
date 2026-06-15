@@ -45,8 +45,9 @@ export interface RefreshSummary {
 }
 
 export interface Settings {
-  notify: {inPage: boolean; desktop: boolean; email: boolean};
+  notify: {inPage: boolean; email: boolean};
   smtp: {
+    provider: 'gmail' | 'custom';
     host: string;
     port: number;
     secure: boolean;

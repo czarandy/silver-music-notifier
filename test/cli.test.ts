@@ -122,6 +122,11 @@ describe('list', () => {
 });
 
 describe('add', () => {
+  beforeEach(() => {
+    Settings.save({musicbrainz: {contact: 'tests@example.com'}});
+    mocks.fetchReleaseGroups.mockResolvedValue([]);
+  });
+
   it('adds an exact MBID without searching', async () => {
     await run(registerAdd, ['add', 'Radiohead', '--mbid', 'mbid-rh']);
     expect(mocks.searchArtist).not.toHaveBeenCalled();
@@ -152,6 +157,31 @@ describe('add', () => {
     await run(registerAdd, ['add', 'query', '--yes']);
     expect(Artist.get('mbid-1')).toBeDefined();
     expect(Artist.get('mbid-2')).toBeUndefined();
+  });
+
+  it('refreshes the newly added artist releases', async () => {
+    mocks.searchArtist.mockResolvedValue([
+      {
+        mbid: 'mbid-1',
+        name: 'Silver Artist',
+        sortName: 'Artist, Silver',
+        disambiguation: 'band',
+      },
+    ]);
+    mocks.fetchReleaseGroups.mockResolvedValue([
+      {
+        mbid: 'rg-1',
+        title: 'Debut',
+        primaryType: 'Album',
+        secondaryTypes: [],
+        firstReleaseDate: '2026-01-01',
+      },
+    ]);
+
+    await run(registerAdd, ['add', 'silver']);
+
+    expect(mocks.fetchReleaseGroups).toHaveBeenCalledWith('mbid-1');
+    expect(Release.list().map(r => r.mbid)).toEqual(['rg-1']);
   });
 
   it('reports when nothing matches', async () => {
@@ -244,8 +274,8 @@ describe('config', () => {
     expect(Settings.load().smtp.host).toBe('smtp.x.com');
     expect(out()).toContain('Set smtp.host.');
 
-    await run(registerConfig, ['config', 'set', 'notify.desktop', 'false']);
-    expect(Settings.load().notify.desktop).toBe(false);
+    await run(registerConfig, ['config', 'set', 'notify.inPage', 'false']);
+    expect(Settings.load().notify.inPage).toBe(false);
 
     await run(registerConfig, [
       'config',

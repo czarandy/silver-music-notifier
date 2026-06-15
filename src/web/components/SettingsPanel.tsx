@@ -1,11 +1,20 @@
 import {useEffect, useRef, useState} from 'react';
 import {useMutation, useQuery, useQueryClient} from '@tanstack/react-query';
 import {
+  Alert,
   Button,
-  CheckboxInput,
+  CheckboxGroup,
+  CheckboxGroupItem,
   Heading,
+  InputGroup,
+  InputGroupText,
+  Layout,
+  LayoutContent,
+  LayoutHeader,
+  Link,
   NumberInput,
   PasswordInput,
+  Select,
   Spinner,
   Switch,
   Text,
@@ -64,9 +73,12 @@ export function SettingsPanel() {
     return <Spinner label="Loading settings…" />;
   }
 
-  const smtpReady = Boolean(
-    settings.smtp.host && settings.smtp.user && settings.smtp.to,
-  );
+  const isGmail = settings.smtp.provider === 'gmail';
+  // Gmail fills in the host automatically, so it only needs an address and
+  // recipient; custom SMTP additionally needs a host.
+  const smtpReady = isGmail
+    ? Boolean(settings.smtp.user && settings.smtp.to)
+    : Boolean(settings.smtp.host && settings.smtp.user && settings.smtp.to);
 
   // Persist a settings object if it differs from what's already saved. Defined
   // as const arrows so TypeScript keeps `settings` narrowed to non-null inside.
@@ -93,34 +105,22 @@ export function SettingsPanel() {
   const setNotify = (p: Partial<Settings['notify']>) => {
     commit({...settings, notify: {...settings.notify, ...p}});
   };
-  const togglePrimaryType = (
-    type: ReleaseGroupPrimaryType,
-    enabled: boolean,
-  ) => {
-    const current = settings.releaseFilter.primaryTypes;
-    const primaryTypes = enabled
-      ? RELEASE_GROUP_PRIMARY_TYPES.filter(
-          t => current.includes(t) || t === type,
-        )
-      : current.filter(t => t !== type);
+  const setPrimaryTypes = (value: string[]) => {
     commit({
       ...settings,
-      releaseFilter: {...settings.releaseFilter, primaryTypes},
+      releaseFilter: {
+        ...settings.releaseFilter,
+        primaryTypes: value as ReleaseGroupPrimaryType[],
+      },
     });
   };
-  const toggleExcludeSecondaryType = (
-    type: ReleaseGroupSecondaryType,
-    excluded: boolean,
-  ) => {
-    const current = settings.releaseFilter.excludeSecondaryTypes;
-    const excludeSecondaryTypes = excluded
-      ? RELEASE_GROUP_SECONDARY_TYPES.filter(
-          t => current.includes(t) || t === type,
-        )
-      : current.filter(t => t !== type);
+  const setExcludeSecondaryTypes = (value: string[]) => {
     commit({
       ...settings,
-      releaseFilter: {...settings.releaseFilter, excludeSecondaryTypes},
+      releaseFilter: {
+        ...settings.releaseFilter,
+        excludeSecondaryTypes: value as ReleaseGroupSecondaryType[],
+      },
     });
   };
 
@@ -129,142 +129,242 @@ export function SettingsPanel() {
   };
 
   return (
-    <div
-      style={{
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 28,
-        maxWidth: 520,
-      }}>
-      <section style={{display: 'flex', flexDirection: 'column', gap: 12}}>
-        <Heading level={2}>Notifications</Heading>
-        <Switch
-          label="In-page “New” badges"
-          isSelected={settings.notify.inPage}
-          onChange={v => setNotify({inPage: v})}
+    <Layout
+      height="auto"
+      hasDividers={false}
+      header={
+        <LayoutHeader
+          title="Settings"
+          level={3}
+          subtitle="Notifications, release filters, and email"
+          padding={0}
         />
-        <Switch
-          label="Desktop notifications"
-          isSelected={settings.notify.desktop}
-          onChange={v => setNotify({desktop: v})}
-        />
-        <Switch
-          label="Email notifications"
-          labelTooltip={
-            smtpReady ? undefined : 'Configure SMTP below to enable email.'
-          }
-          isSelected={settings.notify.email}
-          isDisabled={!smtpReady}
-          onChange={v => setNotify({email: v})}
-        />
-      </section>
+      }
+      content={
+        <LayoutContent padding={0}>
+          <div
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 28,
+              maxWidth: 520,
+              marginTop: 16,
+            }}>
+            <section
+              style={{display: 'flex', flexDirection: 'column', gap: 12}}>
+              <Heading level={4}>Notifications</Heading>
+              <Switch
+                label="In-page “New” badges"
+                isSelected={settings.notify.inPage}
+                onChange={v => setNotify({inPage: v})}
+              />
+              <Switch
+                label="Email notifications"
+                labelTooltip={
+                  smtpReady
+                    ? undefined
+                    : 'Configure SMTP below to enable email.'
+                }
+                isSelected={settings.notify.email}
+                isDisabled={!smtpReady}
+                onChange={v => setNotify({email: v})}
+              />
+            </section>
 
-      <section style={{display: 'flex', flexDirection: 'column', gap: 12}}>
-        <Heading level={2}>Releases</Heading>
-        <Text color="secondary">
-          Which release types to track. Unchecked types are filtered out when
-          refreshing.
-        </Text>
-        {RELEASE_GROUP_PRIMARY_TYPES.map(type => (
-          <CheckboxInput
-            key={type}
-            label={type}
-            value={settings.releaseFilter.primaryTypes.includes(type)}
-            onChange={checked => togglePrimaryType(type, checked)}
-          />
-        ))}
+            <section
+              style={{display: 'flex', flexDirection: 'column', gap: 16}}>
+              <Heading level={4}>Releases</Heading>
+              <CheckboxGroup
+                label="Track these release types"
+                description="Unchecked types are filtered out when refreshing."
+                value={settings.releaseFilter.primaryTypes}
+                onChange={setPrimaryTypes}>
+                {RELEASE_GROUP_PRIMARY_TYPES.map(type => (
+                  <CheckboxGroupItem key={type} label={type} value={type} />
+                ))}
+              </CheckboxGroup>
 
-        <Text color="secondary">
-          Exclude releases with any of these secondary types.
-        </Text>
-        {RELEASE_GROUP_SECONDARY_TYPES.map(type => (
-          <CheckboxInput
-            key={type}
-            label={`Exclude ${type}`}
-            value={settings.releaseFilter.excludeSecondaryTypes.includes(type)}
-            onChange={checked => toggleExcludeSecondaryType(type, checked)}
-          />
-        ))}
-      </section>
+              <CheckboxGroup
+                label="Exclude these secondary types"
+                description="A release carrying any checked type is filtered out."
+                value={settings.releaseFilter.excludeSecondaryTypes}
+                onChange={setExcludeSecondaryTypes}>
+                {RELEASE_GROUP_SECONDARY_TYPES.map(type => (
+                  <CheckboxGroupItem key={type} label={type} value={type} />
+                ))}
+              </CheckboxGroup>
+            </section>
 
-      <section style={{display: 'flex', flexDirection: 'column', gap: 12}}>
-        <Heading level={2}>Email (SMTP)</Heading>
-        <Text color="secondary">
-          Credentials are stored locally on this machine.
-        </Text>
-        <TextInput
-          label="SMTP host"
-          value={settings.smtp.host}
-          onChange={v => editSmtp({host: v})}
-          onBlur={commitCurrent}
-          placeholder="smtp.example.com"
-        />
-        <NumberInput
-          label="Port"
-          value={settings.smtp.port}
-          onChange={v => editSmtp({port: v ?? 587})}
-          onBlur={commitCurrent}
-          min={1}
-          max={65535}
-          isIntegerOnly
-        />
-        <Switch
-          label="Use TLS (secure)"
-          isSelected={settings.smtp.secure}
-          onChange={v =>
-            commit({...settings, smtp: {...settings.smtp, secure: v}})
-          }
-        />
-        <TextInput
-          label="Username"
-          value={settings.smtp.user}
-          onChange={v => editSmtp({user: v})}
-          onBlur={commitCurrent}
-          autoComplete="off"
-        />
-        <PasswordInput
-          label="Password"
-          value={settings.smtp.pass}
-          onChange={v => editSmtp({pass: v})}
-          onBlur={commitCurrent}
-        />
-        <TextInput
-          label="From address"
-          value={settings.smtp.from}
-          onChange={v => editSmtp({from: v})}
-          onBlur={commitCurrent}
-          placeholder="notifier@example.com"
-        />
-        <TextInput
-          label="Send notifications to"
-          value={settings.smtp.to}
-          onChange={v => editSmtp({to: v})}
-          onBlur={commitCurrent}
-          placeholder="you@example.com"
-        />
-        <div>
-          <Button
-            label="Send test email"
-            variant="secondary"
-            isLoading={testEmailMutation.isPending}
-            isDisabled={!smtpReady}
-            onClick={testEmail}
-          />
-        </div>
-      </section>
+            <section
+              style={{display: 'flex', flexDirection: 'column', gap: 12}}>
+              <Heading level={4}>Email</Heading>
+              {!settings.notify.email && (
+                <Alert
+                  status="warning"
+                  container="section"
+                  title="Email notifications are off"
+                  description={
+                    smtpReady
+                      ? 'Turn on "Email notifications" above to receive these emails.'
+                      : 'Finish the setup below, then turn on "Email notifications" above to receive these emails.'
+                  }
+                />
+              )}
+              <Select
+                label="Email provider"
+                value={settings.smtp.provider}
+                options={[
+                  {value: 'gmail', label: 'Gmail'},
+                  {value: 'custom', label: 'Custom (SMTP)'},
+                ]}
+                onChange={v =>
+                  commit({
+                    ...settings,
+                    smtp: {
+                      ...settings.smtp,
+                      provider: v === 'gmail' ? 'gmail' : 'custom',
+                    },
+                  })
+                }
+              />
 
-      <section style={{display: 'flex', flexDirection: 'column', gap: 12}}>
-        <Heading level={2}>MusicBrainz</Heading>
-        <TextInput
-          label="Contact (for the MusicBrainz API User-Agent)"
-          description="An email or URL, per MusicBrainz API etiquette."
-          value={settings.musicbrainz.contact}
-          onChange={v =>
-            setSettings(s => (s ? {...s, musicbrainz: {contact: v}} : s))
-          }
-          onBlur={commitCurrent}
-        />
-      </section>
-    </div>
+              {isGmail ? (
+                <>
+                  <Text color="secondary">
+                    Gmail needs an <strong>app password</strong>, not your
+                    normal Google password. First turn on 2-Step Verification
+                    for your account, then generate a 16-character app password
+                    and paste it below. Your credentials are stored only on this
+                    machine.{' '}
+                    <Link
+                      href="https://myaccount.google.com/apppasswords"
+                      isExternalLink>
+                      Create an app password
+                    </Link>
+                  </Text>
+                  <InputGroup label="Gmail address">
+                    <TextInput
+                      label="Gmail address"
+                      isLabelHidden
+                      // Show only the local part; the full address (needed for
+                      // SMTP auth) is reconstructed on change and kept in sync
+                      // with `from`.
+                      value={settings.smtp.user.replace(/@gmail\.com$/i, '')}
+                      onChange={v => {
+                        const local = v.replace(/@.*/, '').trim();
+                        const addr = local ? `${local}@gmail.com` : '';
+                        editSmtp({user: addr, from: addr});
+                      }}
+                      onBlur={commitCurrent}
+                      placeholder="you"
+                      autoComplete="off"
+                    />
+                    <InputGroupText>@gmail.com</InputGroupText>
+                  </InputGroup>
+                  <PasswordInput
+                    label="App password"
+                    description="The 16-character code from Google; spaces are OK."
+                    value={settings.smtp.pass}
+                    onChange={v => editSmtp({pass: v})}
+                    onBlur={commitCurrent}
+                  />
+                  <TextInput
+                    label="Send notifications to"
+                    value={settings.smtp.to}
+                    onChange={v => editSmtp({to: v})}
+                    onBlur={commitCurrent}
+                    placeholder="you@example.com"
+                  />
+                </>
+              ) : (
+                <>
+                  <Text color="secondary">
+                    Enter the SMTP details from your email provider. Look for
+                    "SMTP" or "outgoing mail" settings in their help docs.
+                    Credentials are stored only on this machine.
+                  </Text>
+                  <TextInput
+                    label="SMTP host"
+                    value={settings.smtp.host}
+                    onChange={v => editSmtp({host: v})}
+                    onBlur={commitCurrent}
+                    placeholder="smtp.example.com"
+                  />
+                  <NumberInput
+                    label="Port"
+                    value={settings.smtp.port}
+                    onChange={v => editSmtp({port: v ?? 587})}
+                    onBlur={commitCurrent}
+                    min={1}
+                    max={65535}
+                    isIntegerOnly
+                  />
+                  <Switch
+                    label="Use TLS (secure)"
+                    isSelected={settings.smtp.secure}
+                    onChange={v =>
+                      commit({
+                        ...settings,
+                        smtp: {...settings.smtp, secure: v},
+                      })
+                    }
+                  />
+                  <TextInput
+                    label="Username"
+                    value={settings.smtp.user}
+                    onChange={v => editSmtp({user: v})}
+                    onBlur={commitCurrent}
+                    autoComplete="off"
+                  />
+                  <PasswordInput
+                    label="Password"
+                    value={settings.smtp.pass}
+                    onChange={v => editSmtp({pass: v})}
+                    onBlur={commitCurrent}
+                  />
+                  <TextInput
+                    label="From address"
+                    value={settings.smtp.from}
+                    onChange={v => editSmtp({from: v})}
+                    onBlur={commitCurrent}
+                    placeholder="notifier@example.com"
+                  />
+                  <TextInput
+                    label="Send notifications to"
+                    value={settings.smtp.to}
+                    onChange={v => editSmtp({to: v})}
+                    onBlur={commitCurrent}
+                    placeholder="you@example.com"
+                  />
+                </>
+              )}
+              <div>
+                <Button
+                  label="Send test email"
+                  variant="secondary"
+                  isLoading={testEmailMutation.isPending}
+                  isDisabled={!smtpReady}
+                  onClick={testEmail}
+                />
+              </div>
+            </section>
+
+            <section
+              style={{display: 'flex', flexDirection: 'column', gap: 12}}>
+              <Heading level={4}>MusicBrainz</Heading>
+              <TextInput
+                label="Contact (for the MusicBrainz API User-Agent)"
+                description="An email or URL, per MusicBrainz API etiquette."
+                value={settings.musicbrainz.contact}
+                onChange={v =>
+                  setSettings(s => (s ? {...s, musicbrainz: {contact: v}} : s))
+                }
+                onBlur={commitCurrent}
+              />
+            </section>
+          </div>
+        </LayoutContent>
+      }
+    />
   );
 }
