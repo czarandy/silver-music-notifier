@@ -82,13 +82,30 @@ try {
     fail('CLI --help output did not look right:\n' + help);
   }
 
-  // 6. A read-only subcommand should work against an isolated data dir.
+  // 6. Seed the required MusicBrainz contact in the isolated data dir, then
+  //    verify a read-only subcommand works against that same store.
+  const dataDir = join(tempDir, 'data');
+  const isolatedEnv = {
+    ...process.env,
+    SILVER_MUSIC_NOTIFIER_DATA_DIR: dataDir,
+  };
+  execFileSync(
+    'node',
+    [
+      binPath,
+      'config',
+      'set',
+      'musicbrainz.contact',
+      'smoke-test@example.invalid',
+    ],
+    {
+      encoding: 'utf8',
+      env: isolatedEnv,
+    },
+  );
   const out = execFileSync('node', [binPath, 'list'], {
     encoding: 'utf8',
-    env: {
-      ...process.env,
-      SILVER_MUSIC_NOTIFIER_DATA_DIR: join(tempDir, 'data'),
-    },
+    env: isolatedEnv,
   });
   if (!out.toLowerCase().includes('no artists')) {
     fail('CLI `list` on an empty store did not behave as expected:\n' + out);
