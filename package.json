@@ -26,7 +26,8 @@
     "silver-music-notifier": "dist/cli/index.js"
   },
   "files": [
-    "dist"
+    "dist",
+    "screenshot.png"
   ],
   "publishConfig": {
     "access": "public"

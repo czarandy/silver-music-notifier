@@ -4,6 +4,8 @@ Track a list of artists and get notified of their new music releases from
 [MusicBrainz](https://musicbrainz.org). Drive it from the terminal, or launch a
 local web UI (built with [silver-ui](https://silver-ui.com)).
 
+![silver-music-notifier web UI](screenshot.png)
+
 ## Install
 
 ```bash
