@@ -1,6 +1,6 @@
 {
   "name": "silver-music-notifier",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "Track artists and get notified of their new music releases from MusicBrainz, via CLI or a local web UI.",
   "license": "MIT",
   "author": "Andrey Goder <andy.goder@gmail.com>",
