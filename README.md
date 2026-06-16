@@ -1,7 +1,7 @@
-# silver-music-notifier
+# Silver Music Notifier
 
 Track a list of artists and get notified of their new music releases from
-[MusicBrainz](https://musicbrainz.org). Drive it from the terminal, or launch a
+[MusicBrainz](https://musicbrainz.org). Use it from the terminal, or launch a
 local web UI (built with [silver-ui](https://silver-ui.com)).
 
 ![silver-music-notifier web UI](screenshot.png)
@@ -12,26 +12,7 @@ local web UI (built with [silver-ui](https://silver-ui.com)).
 npm install -g silver-music-notifier
 ```
 
-Requires Node.js 22.12.0 or newer.
-
-This requires a working build toolchain for `better-sqlite3` (the native SQLite
-driver), which is built automatically on install.
-
-## MusicBrainz contact (required)
-
-MusicBrainz requires every API client to identify a contact (an email or URL) in
-its User-Agent, and throttles or blocks requests without one. The first time you
-run most CLI commands, the CLI **prompts you for a contact** and saves it.
-Non-network setup commands such as `config set`, `clear-data`, and `dismiss`
-can run before the contact is configured. You can also set it ahead of time:
-
-```bash
-silver-music-notifier config set musicbrainz.contact you@example.com
-```
-
-or in the web UI's **Settings** view after the app has launched. In a
-non-interactive context (no TTY), commands that require the contact error with
-this guidance instead of prompting.
+Requires Node 22+.
 
 ## Usage
 
@@ -66,6 +47,22 @@ silver-music-notifier config get               # show settings
 silver-music-notifier config set notify.email true
 silver-music-notifier clear-data               # delete artists/releases, keep settings
 ```
+
+## MusicBrainz contact (required)
+
+MusicBrainz requires every API client to identify a contact (an email or URL) in
+its User-Agent, and throttles or blocks requests without one. The first time you
+run most CLI commands, the CLI **prompts you for a contact** and saves it.
+Non-network setup commands such as `config set`, `clear-data`, and `dismiss`
+can run before the contact is configured. You can also set it ahead of time:
+
+```bash
+silver-music-notifier config set musicbrainz.contact you@example.com
+```
+
+or in the web UI's **Settings** view after the app has launched. In a
+non-interactive context (no TTY), commands that require the contact error with
+this guidance instead of prompting.
 
 ## Notifications
 
